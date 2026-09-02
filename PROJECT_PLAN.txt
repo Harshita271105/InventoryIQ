@@ -1,0 +1,272 @@
+INVENTORYIQ
+Smart Inventory Management & Intelligence Platform
+
+Database Tables:
+1. users
+2. categories
+3. suppliers
+4. products
+5. transactions
+6. stock_history
+
+DATABASE TABLES
+
+1. categories
+   id
+   name
+   description
+   created_at
+
+2. suppliers
+   id
+   name
+   email
+   phone
+   address
+   reliability_score
+   average_delivery_days
+   created_at
+
+3. products
+   id
+   name
+   sku
+   category_id
+   supplier_id
+   description
+   unit_price
+   current_stock
+   reorder_level
+   created_at
+   updated_at
+
+4. users
+   id
+   name
+   email
+   password_hash
+   role
+   created_at
+
+5. transactions
+   id
+   product_id
+   user_id
+   type
+   quantity
+   unit_price
+   total_amount
+   transaction_date
+   notes
+
+6. stock_history
+   id
+   product_id
+   transaction_id
+   change_type
+   quantity_change
+   stock_after
+   timestamp
+
+   BUSINESS LOGIC
+
+1. Purchase
+   stock = stock + quantity
+
+2. Sale
+   stock = stock - quantity
+   Do not allow negative stock
+
+3. Return
+   stock = stock + quantity
+
+4. Adjustment
+   stock changes according to adjustment
+
+5. Stock Status
+   0 = OUT OF STOCK
+   <= 50% reorder level = CRITICAL
+   <= reorder level = LOW STOCK
+   otherwise = HEALTHY
+
+6. Inventory Value
+   stock × unit price
+
+7. Transaction Total
+   quantity × unit price
+
+8. Average Daily Demand
+   units sold / number of days
+
+9. Days Until Stockout
+   current stock / average daily demand
+
+10. Fast Moving
+    High sales volume during selected period
+
+11. Slow Moving
+    Low sales volume during selected period
+
+12. Dead Stock
+    No sales for 90+ days
+
+13. Recommended Reorder Quantity
+    Expected demand during lead time
+    + safety stock
+    - current stock
+
+14. Inventory Health Score
+    Based on stock availability,
+    demand accuracy,
+    turnover efficiency,
+    and supplier reliability
+
+15. ABC Analysis
+    A = High Value
+    B = Medium Value
+    C = Low Value
+
+16. Inventory Aging
+    0–30 days
+    31–60 days
+    61–90 days
+    91–180 days
+    180+ days
+
+    PYTHON / OOP ARCHITECTURE
+
+backend/
+    app.py
+    config.py
+    database.py
+
+    models/
+        product.py
+        supplier.py
+        transaction.py
+        user.py
+
+    services/
+        inventory_service.py
+        analytics_service.py
+        forecasting_service.py
+        alert_service.py
+
+    routes/
+        product_routes.py
+        inventory_routes.py
+        transaction_routes.py
+        analytics_routes.py
+        auth_routes.py
+
+    utils/
+        validators.py
+        helpers.py
+
+Architecture Flow:
+
+Frontend
+    ↓
+REST API
+    ↓
+Routes
+    ↓
+Services
+    ↓
+Models / Database
+    ↓
+SQLite
+
+
+REST API DESIGN
+
+PRODUCTS
+GET    /api/products
+GET    /api/products/<id>
+POST   /api/products
+PUT    /api/products/<id>
+DELETE /api/products/<id>
+
+INVENTORY
+GET    /api/inventory
+POST   /api/inventory/stock-in
+POST   /api/inventory/stock-out
+POST   /api/inventory/adjust
+
+TRANSACTIONS
+GET    /api/transactions
+GET    /api/transactions/<id>
+POST   /api/transactions
+
+ANALYTICS
+GET    /api/analytics/overview
+GET    /api/analytics/fast-moving
+GET    /api/analytics/slow-moving
+GET    /api/analytics/dead-stock
+GET    /api/analytics/aging
+GET    /api/analytics/abc
+GET    /api/analytics/turnover
+
+FORECASTING
+GET    /api/forecasting/<product_id>
+GET    /api/forecasting/overview
+
+REORDER
+GET    /api/reorder/recommendations
+
+ALERTS
+GET    /api/alerts
+PUT    /api/alerts/<id>/resolve
+
+SUPPLIERS
+GET    /api/suppliers
+GET    /api/suppliers/<id>
+POST   /api/suppliers
+PUT    /api/suppliers/<id>
+DELETE /api/suppliers/<id>
+
+AUTHENTICATION
+POST   /api/auth/login
+POST   /api/auth/register
+GET    /api/auth/me
+POST   /api/auth/logout
+
+PROJECT FEATURES
+
+CORE
+1. Product Management
+2. Inventory Management
+3. Transaction Management
+4. Supplier Management
+5. User Authentication
+6. Dashboard
+
+INTELLIGENCE
+7. Smart Low-Stock Detection
+8. Critical Stock Detection
+9. Stockout Prediction
+10. Smart Reorder Recommendation
+11. Fast-Moving Products
+12. Slow-Moving Products
+13. Dead Stock Detection
+
+ANALYTICS
+14. Inventory Value
+15. Inventory Turnover
+16. Inventory Aging
+17. ABC Analysis
+18. Stock Movement Heatmap
+
+FORECASTING
+19. Demand Forecasting
+20. Stockout Forecast
+
+ALERTS
+21. Smart Alert System
+
+REPORTING
+22. Inventory Reports
+23. Sales Reports
+24. Purchase Reports
+25. Supplier Reports
+26. CSV Export
