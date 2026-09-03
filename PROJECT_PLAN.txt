@@ -270,3 +270,5 @@ REPORTING
 24. Purchase Reports
 25. Supplier Reports
 26. CSV Export
+
+- Integrated public Retail Store Inventory Forecasting Dataset for inventory analytics.
