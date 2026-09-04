@@ -2699,40 +2699,39 @@ function AlertsPage({
 }
 
 function SuppliersPage() {
-  const suppliers = [
-    {
-      name: "TechSource Inc.",
-      products: 48,
-      orders: 128,
-      delivery: "4.2 days",
-      reliability: "94%",
-      status: "On track",
-    },
-    {
-      name: "VisionWorks",
-      products: 32,
-      orders: 86,
-      delivery: "5.1 days",
-      reliability: "91%",
-      status: "On track",
-    },
-    {
-      name: "KeyWorks Ltd.",
-      products: 26,
-      orders: 74,
-      delivery: "3.8 days",
-      reliability: "98%",
-      status: "Top performer",
-    },
-    {
-      name: "OfficeForm",
-      products: 18,
-      orders: 42,
-      delivery: "8.6 days",
-      reliability: "78%",
-      status: "Needs review",
-    },
-  ];
+  type BackendProduct = {
+    id: number;
+    name: string;
+    sku: string;
+    category_id: number | null;
+    supplier_id: number | null;
+    unit_price: number;
+    current_stock: number;
+    reorder_level: number;
+  };
+
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadSupplierData() {
+      try {
+        const productData = await apiGet<BackendProduct[]>("/products");
+        setProducts(productData);
+      } catch (error) {
+        console.error("Failed to load supplier data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadSupplierData();
+  }, []);
+
+  const productsWithSuppliers = products.filter(
+    (product) => product.supplier_id !== null,
+  );
+
   return (
     <div className="page">
       <PageHeader
@@ -2746,65 +2745,326 @@ function SuppliersPage() {
           </button>
         }
       />
+
       <div className="supplier-kpis">
         <div>
           <Truck size={17} />
           <span>Supplier reliability</span>
-          <strong>94%</strong>
+          <strong>N/A</strong>
         </div>
+
         <div>
           <Clock3 size={17} />
           <span>Average delivery</span>
-          <strong>4.2 days</strong>
+          <strong>N/A</strong>
         </div>
+
         <div>
           <ClipboardList size={17} />
           <span>Active purchase orders</span>
-          <strong>28</strong>
+          <strong>N/A</strong>
         </div>
       </div>
-      <Card title="All suppliers">
-        <div className="supplier-table">
-          <div className="reorder-head">
-            <span>Supplier</span>
-            <span>Products</span>
-            <span>Orders</span>
-            <span>Avg. delivery</span>
-            <span>Reliability</span>
-            <span>Status</span>
+
+      <Card title="Supplier data availability">
+        {loading ? (
+          <div className="supplier-table">
+            <div className="reorder-row">
+              <span>Loading supplier information...</span>
+            </div>
           </div>
-          {suppliers.map((supplier) => (
-            <div className="reorder-row" key={supplier.name}>
+        ) : productsWithSuppliers.length === 0 ? (
+          <div className="supplier-table">
+            <div className="reorder-row">
               <div className="supplier-name">
-                <div className="supplier-avatar">
-                  {supplier.name.slice(0, 2).toUpperCase()}
+                <div className="supplier-avatar">N/A</div>
+                <div>
+                  <strong>Supplier information unavailable</strong>
+                  <span>
+                    The public inventory dataset does not provide supplier
+                    names, delivery times, reliability scores, or purchase
+                    order information.
+                  </span>
                 </div>
-                <strong>{supplier.name}</strong>
               </div>
-              <span>{supplier.products}</span>
-              <span>{supplier.orders}</span>
-              <span>{supplier.delivery}</span>
-              <strong
-                className={
-                  supplier.reliability === "78%" ? "negative" : "positive"
-                }
-              >
-                {supplier.reliability}
-              </strong>
-              <span
-                className={`supplier-status ${supplier.status === "Needs review" ? "review" : ""}`}
-              >
-                {supplier.status}
+
+              <span>—</span>
+              <span>—</span>
+              <span>—</span>
+              <strong>N/A</strong>
+              <span className="supplier-status">
+                Dataset limitation
               </span>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="supplier-table">
+            <div className="reorder-head">
+              <span>Supplier</span>
+              <span>Products</span>
+              <span>Orders</span>
+              <span>Avg. delivery</span>
+              <span>Reliability</span>
+              <span>Status</span>
+            </div>
+
+            <div className="reorder-row">
+              <div className="supplier-name">
+                <div className="supplier-avatar">
+                  DATA
+                </div>
+
+                <div>
+                  <strong>Dataset suppliers</strong>
+                  <span>
+                    {productsWithSuppliers.length} products linked
+                  </span>
+                </div>
+              </div>
+
+              <span>{productsWithSuppliers.length}</span>
+              <span>N/A</span>
+              <span>N/A</span>
+              <strong>N/A</strong>
+              <span className="supplier-status">
+                Dataset based
+              </span>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );
 }
 
-function ReportsPage({ showToast }: { showToast: (message: string) => void }) {
+function ReportsPage({
+  showToast,
+}: {
+  showToast: (message: string) => void;
+}) {
+  type BackendProduct = {
+    id: number;
+    name: string;
+    sku: string;
+    current_stock: number;
+    reorder_level: number;
+    unit_price: number;
+  };
+
+  type BackendTransaction = {
+    id: number;
+    product_id: number;
+    type: string;
+    quantity: number;
+    unit_price: number;
+    total_amount: number;
+    transaction_date: string;
+  };
+
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+  const [transactions, setTransactions] = useState<BackendTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadReportData() {
+      try {
+        const [productData, transactionData] = await Promise.all([
+          apiGet<BackendProduct[]>("/products"),
+          apiGet<BackendTransaction[]>("/transactions"),
+        ]);
+
+        setProducts(productData);
+        setTransactions(transactionData);
+      } catch (error) {
+        console.error("Failed to load report data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadReportData();
+  }, []);
+
+  const exportCSV = (
+    filename: string,
+    headers: string[],
+    rows: (string | number)[][],
+  ) => {
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) =>
+        row
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(","),
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+    link.click();
+
+    URL.revokeObjectURL(url);
+
+    showToast(`${filename} exported successfully.`);
+  };
+
+  const generateReport = (title: string) => {
+    if (loading) {
+      showToast("Report data is still loading.");
+      return;
+    }
+
+    if (title === "Inventory Summary") {
+      exportCSV(
+        "inventory-summary.csv",
+        ["Product", "SKU", "Current Stock", "Reorder Level", "Unit Price", "Inventory Value"],
+        products.map((product) => [
+          product.name,
+          product.sku,
+          product.current_stock,
+          product.reorder_level,
+          product.unit_price.toFixed(2),
+          (product.current_stock * product.unit_price).toFixed(2),
+        ]),
+      );
+      return;
+    }
+
+    if (title === "Stock Movement") {
+      exportCSV(
+        "stock-movement.csv",
+        ["Transaction ID", "Product ID", "Type", "Quantity", "Unit Price", "Total", "Date"],
+        transactions.map((transaction) => [
+          transaction.id,
+          transaction.product_id,
+          transaction.type,
+          transaction.quantity,
+          transaction.unit_price.toFixed(2),
+          transaction.total_amount.toFixed(2),
+          transaction.transaction_date,
+        ]),
+      );
+      return;
+    }
+
+    if (title === "Sales Report") {
+      const sales = transactions.filter(
+        (transaction) => transaction.type.toLowerCase() === "sale",
+      );
+
+      exportCSV(
+        "sales-report.csv",
+        ["Transaction ID", "Product ID", "Quantity Sold", "Unit Price", "Total", "Date"],
+        sales.map((transaction) => [
+          transaction.id,
+          transaction.product_id,
+          Math.abs(transaction.quantity),
+          transaction.unit_price.toFixed(2),
+          transaction.total_amount.toFixed(2),
+          transaction.transaction_date,
+        ]),
+      );
+      return;
+    }
+
+    if (title === "Purchase Report") {
+      showToast(
+        "Purchase report unavailable: the public dataset does not contain purchase-order or supplier data.",
+      );
+      return;
+    }
+
+    if (title === "Low Stock Report") {
+      const lowStock = products.filter(
+        (product) =>
+          product.current_stock <= product.reorder_level,
+      );
+
+      exportCSV(
+        "low-stock-report.csv",
+        ["Product", "SKU", "Current Stock", "Reorder Level", "Unit Price"],
+        lowStock.map((product) => [
+          product.name,
+          product.sku,
+          product.current_stock,
+          product.reorder_level,
+          product.unit_price.toFixed(2),
+        ]),
+      );
+      return;
+    }
+
+    if (title === "Dead Stock Report") {
+      if (transactions.length === 0) {
+        showToast("No transaction history is available.");
+        return;
+      }
+
+      const latestDate = new Date(
+        Math.max(
+          ...transactions.map(
+            (transaction) =>
+              new Date(transaction.transaction_date).getTime(),
+          ),
+        ),
+      );
+
+      const latestSaleByProduct = new Map<number, number>();
+
+      transactions
+        .filter(
+          (transaction) =>
+            transaction.type.toLowerCase() === "sale",
+        )
+        .forEach((transaction) => {
+          const current = latestSaleByProduct.get(transaction.product_id);
+
+          const transactionTime = new Date(
+            transaction.transaction_date,
+          ).getTime();
+
+          if (!current || transactionTime > current) {
+            latestSaleByProduct.set(
+              transaction.product_id,
+              transactionTime,
+            );
+          }
+        });
+
+      const deadStock = products.filter((product) => {
+        const lastSale = latestSaleByProduct.get(product.id);
+
+        if (!lastSale) {
+          return true;
+        }
+
+        const daysSinceSale =
+          (latestDate.getTime() - lastSale) /
+          (1000 * 60 * 60 * 24);
+
+        return daysSinceSale >= 90;
+      });
+
+      exportCSV(
+        "dead-stock-report.csv",
+        ["Product", "SKU", "Current Stock", "Unit Price"],
+        deadStock.map((product) => [
+          product.name,
+          product.sku,
+          product.current_stock,
+          product.unit_price.toFixed(2),
+        ]),
+      );
+    }
+  };
+
   const reports = [
     {
       title: "Inventory Summary",
@@ -2813,12 +3073,12 @@ function ReportsPage({ showToast }: { showToast: (message: string) => void }) {
     },
     {
       title: "Stock Movement",
-      desc: "All received, sold, returned, and adjusted units",
+      desc: "All recorded inventory movements",
       icon: Activity,
     },
     {
       title: "Sales Report",
-      desc: "Sales performance by product and category",
+      desc: "Sales activity from the public dataset",
       icon: BarChart3,
     },
     {
@@ -2833,10 +3093,11 @@ function ReportsPage({ showToast }: { showToast: (message: string) => void }) {
     },
     {
       title: "Dead Stock Report",
-      desc: "Products with no movement in 90+ days",
+      desc: "Products with no recorded sales for 90+ days",
       icon: Clock3,
     },
   ];
+
   return (
     <div className="page">
       <PageHeader
@@ -2844,27 +3105,29 @@ function ReportsPage({ showToast }: { showToast: (message: string) => void }) {
         title="Reports"
         subtitle="Create clear, shareable views of your inventory data."
       />
+
       <div className="reports-grid">
         {reports.map((report) => (
           <div className="report-card" key={report.title}>
             <div className="report-icon">
               <report.icon size={18} />
             </div>
+
             <h3>{report.title}</h3>
             <p>{report.desc}</p>
+
             <div>
               <button
                 className="filter-button"
-                onClick={() => showToast(`${report.title} exported as CSV.`)}
+                onClick={() => generateReport(report.title)}
               >
                 <Download size={14} />
                 Export CSV
               </button>
+
               <button
                 className="card-link"
-                onClick={() =>
-                  showToast(`${report.title} generated successfully.`)
-                }
+                onClick={() => generateReport(report.title)}
               >
                 Generate <ArrowRight size={14} />
               </button>
@@ -2872,16 +3135,25 @@ function ReportsPage({ showToast }: { showToast: (message: string) => void }) {
           </div>
         ))}
       </div>
+
       <div className="report-note">
         <Sparkles size={19} />
+
         <div>
-          <strong>Make reporting a habit</strong>
+          <strong>Dataset-based reporting</strong>
           <p>
-            Schedule recurring reports for your team once your Python backend is
-            connected.
+            Reports are generated from the imported public inventory
+            dataset. Supplier and purchase-order reports require fields
+            that are not available in the source data.
           </p>
         </div>
-        <button className="secondary-button">Set up schedule</button>
+
+        <button
+          className="secondary-button"
+          onClick={() => showToast("Reports are ready to generate.")}
+        >
+          Generate report
+        </button>
       </div>
     </div>
   );
