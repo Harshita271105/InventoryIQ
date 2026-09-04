@@ -1304,6 +1304,70 @@ function TransactionsPage({
 }: {
   onAction: (action: string) => void;
 }) {
+  type BackendTransaction = {
+    id: number;
+    product_id: number;
+    user_id: number | null;
+    type: string;
+    quantity: number;
+    unit_price: number;
+    total_amount: number;
+    notes: string | null;
+    transaction_date: string;
+  };
+
+  type BackendProduct = {
+    id: number;
+    name: string;
+    sku: string;
+  };
+
+  const [transactionData, setTransactionData] = useState<BackendTransaction[]>([]);
+  const [productData, setProductData] = useState<BackendProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadTransactions() {
+      try {
+        const [transactionsResponse, productsResponse] = await Promise.all([
+          apiGet<BackendTransaction[]>("/transactions"),
+          apiGet<BackendProduct[]>("/products"),
+        ]);
+
+        setTransactionData(transactionsResponse);
+        setProductData(productsResponse);
+      } catch (error) {
+        console.error("Failed to load transactions:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTransactions();
+  }, []);
+
+  const productMap = new Map(
+    productData.map((product) => [product.id, product]),
+  );
+
+  const getTransactionType = (type: string): TransactionType => {
+    const normalized = type.toLowerCase();
+
+    if (normalized === "sale") return "Sale";
+    if (normalized === "purchase") return "Purchase";
+    if (normalized === "return") return "Return";
+
+    return "Adjustment";
+  };
+
+  const totalTransactions = transactionData.length;
+
+  const unitsSold = transactionData
+    .filter((transaction) => transaction.type.toLowerCase() === "sale")
+    .reduce((sum, transaction) => sum + Math.abs(transaction.quantity), 0);
+
+  const recentTransactions = transactionData.slice(0, 5);
+
   return (
     <div className="page">
       <PageHeader
@@ -1320,23 +1384,27 @@ function TransactionsPage({
           </button>
         }
       />
+
       <div className="transaction-kpis">
         <div>
           <span>Total transactions</span>
-          <strong>24,891</strong>
-          <small>↑ 14.3% vs last month</small>
+          <strong>{totalTransactions.toLocaleString()}</strong>
+          <small>From public inventory dataset</small>
         </div>
+
         <div>
           <span>Units sold</span>
-          <strong>18,420</strong>
-          <small>↑ 9.8% vs last month</small>
+          <strong>{unitsSold.toLocaleString()}</strong>
+          <small>Based on recorded sales</small>
         </div>
+
         <div>
           <span>Units received</span>
-          <strong>22,680</strong>
-          <small>↑ 12.1% vs last month</small>
+          <strong>N/A</strong>
+          <small>Not available in source data</small>
         </div>
       </div>
+
       <Card
         title="Recent transactions"
         action={
@@ -1360,55 +1428,98 @@ function TransactionsPage({
                 <th>User</th>
               </tr>
             </thead>
+
             <tbody>
-              {transactions.map((transaction) => (
-                <tr key={transaction.id}>
-                  <td className="mono">{transaction.id}</td>
-                  <td>
-                    <div className="product-cell">
-                      <div className="product-thumb">
-                        <Package size={15} />
-                      </div>
-                      <div>
-                        <strong>{transaction.product}</strong>
-                        <span>{transaction.sku}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span
-                      className={`transaction-badge ${transactionClasses[transaction.type]}`}
-                    >
-                      {transaction.type}
-                    </span>
-                  </td>
-                  <td className={transaction.quantity < 0 ? "negative" : ""}>
-                    {transaction.quantity > 0 ? "+" : ""}
-                    {transaction.quantity}
-                  </td>
-                  <td>${transaction.price.toFixed(2)}</td>
-                  <td>
-                    <strong>
-                      $
-                      {Math.abs(
-                        transaction.quantity * transaction.price,
-                      ).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </strong>
-                  </td>
-                  <td className="table-muted">{transaction.date}</td>
-                  <td>{transaction.user}</td>
+              {loading ? (
+                <tr>
+                  <td colSpan={8}>Loading transactions...</td>
                 </tr>
-              ))}
+              ) : recentTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={8}>No transactions found.</td>
+                </tr>
+              ) : (
+                recentTransactions.map((transaction) => {
+                  const product = productMap.get(transaction.product_id);
+                  const type = getTransactionType(transaction.type);
+
+                  return (
+                    <tr key={transaction.id}>
+                      <td className="mono">{transaction.id}</td>
+
+                      <td>
+                        <div className="product-cell">
+                          <div className="product-thumb">
+                            <Package size={15} />
+                          </div>
+
+                          <div>
+                            <strong>
+                              {product?.name || `Product #${transaction.product_id}`}
+                            </strong>
+
+                            <span>
+                              {product?.sku || "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td>
+                        <span
+                          className={`transaction-badge ${transactionClasses[type]}`}
+                        >
+                          {type}
+                        </span>
+                      </td>
+
+                      <td>
+                        {transaction.quantity > 0 ? "+" : ""}
+                        {transaction.quantity}
+                      </td>
+
+                      <td>
+                        ${transaction.unit_price.toFixed(2)}
+                      </td>
+
+                      <td>
+                        <strong>
+                          $
+                          {Math.abs(transaction.total_amount).toLocaleString(
+                            undefined,
+                            {
+                              maximumFractionDigits: 2,
+                            },
+                          )}
+                        </strong>
+                      </td>
+
+                      <td className="table-muted">
+                        {transaction.transaction_date}
+                      </td>
+
+                      <td>
+                        {transaction.user_id
+                          ? `User #${transaction.user_id}`
+                          : "Dataset"}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
+
           <div className="table-footer">
-            <span>Showing 1–5 of 24,891</span>
+            <span>
+              Showing {recentTransactions.length} of{" "}
+              {totalTransactions.toLocaleString()}
+            </span>
+
             <div>
               <button disabled>Previous</button>
               <button className="page-active">1</button>
-              <button>2</button>
-              <button>3</button>
-              <button>Next</button>
+              <button disabled>Next</button>
             </div>
           </div>
         </div>
@@ -1418,13 +1529,229 @@ function TransactionsPage({
 }
 
 function AnalyticsPage() {
-  const radarData = [
-    { subject: "Availability", A: 92 },
-    { subject: "Accuracy", A: 84 },
-    { subject: "Turnover", A: 86 },
-    { subject: "Reliability", A: 88 },
-    { subject: "Velocity", A: 78 },
+  type BackendTransaction = {
+    id: number;
+    product_id: number;
+    user_id: number | null;
+    type: string;
+    quantity: number;
+    unit_price: number;
+    total_amount: number;
+    notes: string | null;
+    transaction_date: string;
+  };
+
+  type BackendProduct = {
+    id: number;
+    name: string;
+    sku: string;
+    category_id: number | null;
+    unit_price: number;
+    current_stock: number;
+    reorder_level: number;
+  };
+
+  type BackendCategory = {
+    id: number;
+    name: string;
+  };
+
+  const [transactionData, setTransactionData] = useState<BackendTransaction[]>([]);
+  const [productData, setProductData] = useState<BackendProduct[]>([]);
+  const [categoryData, setCategoryData] = useState<BackendCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadAnalyticsData() {
+      try {
+        const [transactions, products, categories] = await Promise.all([
+          apiGet<BackendTransaction[]>("/transactions"),
+          apiGet<BackendProduct[]>("/products"),
+          apiGet<BackendCategory[]>("/categories"),
+        ]);
+
+        setTransactionData(transactions);
+        setProductData(products);
+        setCategoryData(categories);
+      } catch (error) {
+        console.error("Failed to load analytics data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadAnalyticsData();
+  }, []);
+
+  const categoryMap = new Map(
+    categoryData.map((category) => [category.id, category.name]),
+  );
+
+  const productMap = new Map(
+    productData.map((product) => [product.id, product]),
+  );
+
+  const salesTransactions = transactionData.filter(
+    (transaction) => transaction.type.toLowerCase() === "sale",
+  );
+
+  const trendMap = new Map<
+    string,
+    { day: string; sales: number; purchases: number }
+  >();
+
+  salesTransactions.forEach((transaction) => {
+    const date = transaction.transaction_date?.split(" ")[0] || "";
+
+    if (!date) return;
+
+    if (!trendMap.has(date)) {
+      trendMap.set(date, {
+        day: date,
+        sales: 0,
+        purchases: 0,
+      });
+    }
+
+    trendMap.get(date)!.sales += Math.abs(transaction.quantity);
+  });
+
+  const trendData = Array.from(trendMap.values())
+    .sort((a, b) => a.day.localeCompare(b.day))
+    .slice(-12)
+    .map((item) => ({
+      ...item,
+      day: new Date(item.day).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+    }));
+
+  const categoryTotals = new Map<string, number>();
+
+  productData.forEach((product) => {
+    const category =
+      categoryMap.get(product.category_id ?? -1) || "Uncategorized";
+
+    const value = product.current_stock * product.unit_price;
+
+    categoryTotals.set(
+      category,
+      (categoryTotals.get(category) || 0) + value,
+    );
+  });
+
+  const categoryColors = [
+    "#48d597",
+    "#5487fa",
+    "#a878f6",
+    "#f5a742",
+    "#ef6672",
   ];
+
+  const categoryDistribution = Array.from(categoryTotals.entries()).map(
+    ([name, value], index) => ({
+      name,
+      value,
+      color: categoryColors[index % categoryColors.length],
+    }),
+  );
+
+  const totalInventoryValue = productData.reduce(
+    (sum, product) => sum + product.current_stock * product.unit_price,
+    0,
+  );
+
+  const moverMap = new Map<
+    number,
+    { product: BackendProduct; units: number }
+  >();
+
+  salesTransactions.forEach((transaction) => {
+    const product = productMap.get(transaction.product_id);
+
+    if (!product) return;
+
+    if (!moverMap.has(product.id)) {
+      moverMap.set(product.id, {
+        product,
+        units: 0,
+      });
+    }
+
+    moverMap.get(product.id)!.units += Math.abs(transaction.quantity);
+  });
+
+  const topMovers = Array.from(moverMap.values())
+    .sort((a, b) => b.units - a.units)
+    .slice(0, 5);
+
+  const lowStockCount = productData.filter(
+    (product) => product.current_stock <= product.reorder_level,
+  ).length;
+
+  const healthyPercentage =
+    productData.length > 0
+      ? Math.round(
+          ((productData.length - lowStockCount) / productData.length) * 100,
+        )
+      : 0;
+
+  const radarData = [
+    {
+      subject: "Availability",
+      A: healthyPercentage,
+    },
+    {
+      subject: "Accuracy",
+      A: Math.min(100, Math.round((salesTransactions.length / 72740) * 100)),
+    },
+    {
+      subject: "Turnover",
+      A:
+        productData.length > 0
+          ? Math.min(
+              100,
+              Math.round(
+                (salesTransactions.reduce(
+                  (sum, transaction) => sum + Math.abs(transaction.quantity),
+                  0,
+                ) /
+                  Math.max(
+                    1,
+                    productData.reduce(
+                      (sum, product) => sum + product.current_stock,
+                      0,
+                    ),
+                  )) *
+                  10,
+              ),
+            )
+          : 0,
+    },
+    {
+      subject: "Reliability",
+      A: healthyPercentage,
+    },
+    {
+      subject: "Velocity",
+      A:
+        productData.length > 0
+          ? Math.min(
+              100,
+              Math.round(
+                (salesTransactions.reduce(
+                  (sum, transaction) => sum + Math.abs(transaction.quantity),
+                  0,
+                ) /
+                  Math.max(1, transactionData.length)) *
+                  10,
+              ),
+            )
+          : 0,
+    },
+  ];
+
   return (
     <div className="page">
       <PageHeader
@@ -1434,194 +1761,428 @@ function AnalyticsPage() {
         action={
           <button className="filter-button">
             <CalendarDays size={15} />
-            Last 30 days <ChevronDown size={14} />
+            Dataset analytics <ChevronDown size={14} />
           </button>
         }
       />
-      <div className="analytics-grid">
-        <Card title="Sales vs purchases" className="analytics-wide">
-          <div className="chart-legend">
-            <span>
-              <i className="dot blue-dot" />
-              Sales
-            </span>
-            <span>
-              <i className="dot purple-dot" />
-              Purchases
-            </span>
-          </div>
-          <div className="large-chart analytics-bar-chart">
-            <ResponsiveContainer width="100%" height={300} minWidth={0}>
-              <BarChart data={trendData} width={0} height={300}>
-                <CartesianGrid stroke="#263141" vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  tick={{ fill: "#8390a5", fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fill: "#8390a5", fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "#111a27",
-                    border: "1px solid #2a394e",
-                    borderRadius: 10,
-                  }}
-                />
-                <Bar
-                  dataKey="sales"
-                  fill="#5487fa"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={22}
-                />
-                <Bar
-                  dataKey="purchases"
-                  fill="#a878f6"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={22}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+
+      {loading ? (
+        <Card title="Loading analytics">
+          <p>Loading data from the public inventory dataset...</p>
         </Card>
-        <Card title="Category distribution">
-  <div
-    className="analytics-donut"
-    style={{
-      position: "relative",
-      width: "100%",
-      height: "240px",
-      minWidth: 0,
-      overflow: "hidden",
-    }}
-  >
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        display: "block",
-      }}
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={categoryData}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="50%"
-            innerRadius={52}
-            outerRadius={82}
-            paddingAngle={2}
-            stroke="none"
-          >
-            {categoryData.map((entry) => (
-              <Cell
-                key={entry.name}
-                fill={entry.color}
-              />
-            ))}
-          </Pie>
+      ) : (
+        <div className="analytics-grid">
+          <Card title="Sales activity" className="analytics-wide">
+            <div className="chart-legend">
+              <span>
+                <i className="dot blue-dot" />
+                Sales
+              </span>
+              <span>
+                <i className="dot purple-dot" />
+                Purchases
+              </span>
+            </div>
 
-          <Tooltip
-            contentStyle={{
-              background: "#111a27",
-              border: "1px solid #2a394e",
-              borderRadius: 10,
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
+            <div className="large-chart analytics-bar-chart">
+              <ResponsiveContainer width="100%" height={300} minWidth={0}>
+                <BarChart data={trendData} width={0} height={300}>
+                  <CartesianGrid stroke="#263141" vertical={false} />
 
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        pointerEvents: "none",
-      }}
-    >
-      <strong>$486.7K</strong>
-      <span>Total value</span>
-    </div>
-  </div>
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fill: "#8390a5", fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
 
-  <div className="mini-legend">
-    {categoryData.slice(0, 4).map((item) => (
-      <span key={item.name}>
-        <i style={{ background: item.color }} />
-        {item.name}
-      </span>
-    ))}
-  </div>
-</Card>
-        <Card title="Inventory health">
-          <div className="radar-chart">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={radarData}>
-                <PolarGrid stroke="#2a384a" />
-                <PolarAngleAxis
-                  dataKey="subject"
-                  tick={{ fill: "#98a4b7", fontSize: 10 }}
-                />
-                <Radar
-                  dataKey="A"
-                  stroke="#48d597"
-                  fill="#48d597"
-                  fillOpacity={0.2}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-        <Card title="Top movers">
-          <div className="movers-list">
-            {mockProducts.slice(0, 5).map((product, index) => (
-              <div key={product.id}>
-                <span className="rank">0{index + 1}</span>
-                <div>
-                  <strong>{product.name}</strong>
-                  <small>{product.category}</small>
-                </div>
-                <b className={index === 3 ? "negative" : "positive"}>
-                  {index === 3 ? "−12.4%" : `+${18 - index * 2}.4%`}
-                </b>
+                  <YAxis
+                    tick={{ fill: "#8390a5", fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+
+                  <Tooltip
+                    contentStyle={{
+                      background: "#111a27",
+                      border: "1px solid #2a394e",
+                      borderRadius: 10,
+                    }}
+                  />
+
+                  <Bar
+                    dataKey="sales"
+                    fill="#5487fa"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={22}
+                  />
+
+                  <Bar
+                    dataKey="purchases"
+                    fill="#a878f6"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={22}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card title="Category distribution">
+            <div
+              className="analytics-donut"
+              style={{
+                position: "relative",
+                width: "100%",
+                height: "240px",
+                minWidth: 0,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  display: "block",
+                }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryDistribution}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={52}
+                      outerRadius={82}
+                      paddingAngle={2}
+                      stroke="none"
+                    >
+                      {categoryDistribution.map((entry) => (
+                        <Cell
+                          key={entry.name}
+                          fill={entry.color}
+                        />
+                      ))}
+                    </Pie>
+
+                    <Tooltip
+                      formatter={(value: number) =>
+                        `$${value.toLocaleString(undefined, {
+                          maximumFractionDigits: 0,
+                        })}`
+                      }
+                      contentStyle={{
+                        background: "#111a27",
+                        border: "1px solid #2a394e",
+                        borderRadius: 10,
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  pointerEvents: "none",
+                }}
+              >
+                <strong>
+                  $
+                  {totalInventoryValue >= 1000000
+                    ? `${(totalInventoryValue / 1000000).toFixed(1)}M`
+                    : `${(totalInventoryValue / 1000).toFixed(1)}K`}
+                </strong>
+
+                <span>Total value</span>
+              </div>
+            </div>
+
+            <div className="mini-legend">
+              {categoryDistribution.map((item) => (
+                <span key={item.name}>
+                  <i style={{ background: item.color }} />
+                  {item.name}
+                </span>
+              ))}
+            </div>
+          </Card>
+
+          <Card title="Inventory health">
+            <div className="radar-chart">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={radarData}>
+                  <PolarGrid stroke="#2a384a" />
+
+                  <PolarAngleAxis
+                    dataKey="subject"
+                    tick={{ fill: "#98a4b7", fontSize: 10 }}
+                  />
+
+                  <Radar
+                    dataKey="A"
+                    stroke="#48d597"
+                    fill="#48d597"
+                    fillOpacity={0.2}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card title="Top movers">
+            <div className="movers-list">
+              {topMovers.map((item, index) => {
+                const category =
+                  categoryMap.get(item.product.category_id ?? -1) ||
+                  "Uncategorized";
+
+                return (
+                  <div key={item.product.id}>
+                    <span className="rank">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+
+                    <div>
+                      <strong>{item.product.name}</strong>
+                      <small>{category}</small>
+                    </div>
+
+                    <b className="positive">
+                      {item.units.toLocaleString()} sold
+                    </b>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
 
 function ForecastingPage() {
-  const forecastData = trendData.map((item, index) => ({
-    ...item,
-    historical: index < 7 ? item.sales : undefined,
-    predicted:
-      index >= 6
-        ? Math.round(item.sales * (1 + (index - 5) * 0.04))
-        : undefined,
-    upper:
-      index >= 6
-        ? Math.round(item.sales * (1.12 + (index - 6) * 0.04))
-        : undefined,
-    lower:
-      index >= 6
-        ? Math.round(item.sales * (0.88 - (index - 6) * 0.01))
-        : undefined,
+  type BackendTransaction = {
+    id: number;
+    product_id: number;
+    user_id: number | null;
+    type: string;
+    quantity: number;
+    unit_price: number;
+    total_amount: number;
+    notes: string | null;
+    transaction_date: string;
+  };
+
+  type BackendProduct = {
+    id: number;
+    name: string;
+    sku: string;
+    category_id: number | null;
+    supplier_id: number | null;
+    unit_price: number;
+    current_stock: number;
+    reorder_level: number;
+  };
+
+  const [transactionData, setTransactionData] = useState<BackendTransaction[]>([]);
+  const [productData, setProductData] = useState<BackendProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadForecastData() {
+      try {
+        const [transactions, products] = await Promise.all([
+          apiGet<BackendTransaction[]>("/transactions"),
+          apiGet<BackendProduct[]>("/products"),
+        ]);
+
+        setTransactionData(transactions);
+        setProductData(products);
+      } catch (error) {
+        console.error("Failed to load forecasting data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadForecastData();
+  }, []);
+
+  const salesTransactions = transactionData.filter(
+    (transaction) => transaction.type.toLowerCase() === "sale",
+  );
+
+  const dailySalesMap = new Map<string, number>();
+
+  salesTransactions.forEach((transaction) => {
+    const date = transaction.transaction_date?.split(" ")[0];
+
+    if (!date) return;
+
+    dailySalesMap.set(
+      date,
+      (dailySalesMap.get(date) || 0) + Math.abs(transaction.quantity),
+    );
+  });
+
+  const sortedDates = Array.from(dailySalesMap.keys()).sort();
+
+  const recentDates = sortedDates.slice(-7);
+
+  const recentDailySales = recentDates.map((date) => ({
+    day: new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
+    sales: dailySalesMap.get(date) || 0,
   }));
+
+  const averageDailyDemand =
+    recentDailySales.length > 0
+      ? recentDailySales.reduce((sum, item) => sum + item.sales, 0) /
+        recentDailySales.length
+      : 0;
+
+  const previousAverage =
+    sortedDates.length >= 14
+      ? sortedDates
+          .slice(-14, -7)
+          .reduce((sum, date) => sum + (dailySalesMap.get(date) || 0), 0) / 7
+      : averageDailyDemand;
+
+  const demandChange =
+    previousAverage > 0
+      ? ((averageDailyDemand - previousAverage) / previousAverage) * 100
+      : 0;
+
+  const forecastData = [
+    ...recentDailySales.map((item) => ({
+      day: item.day,
+      historical: item.sales,
+      predicted: undefined,
+      upper: undefined,
+      lower: undefined,
+    })),
+    ...Array.from({ length: 7 }, (_, index) => {
+      const predicted = Math.max(
+        0,
+        Math.round(
+          averageDailyDemand *
+            (1 + (demandChange / 100) * ((index + 1) / 7)),
+        ),
+      );
+
+      return {
+        day: `Day ${index + 1}`,
+        historical: undefined,
+        predicted,
+        upper: Math.round(predicted * 1.2),
+        lower: Math.max(0, Math.round(predicted * 0.8)),
+      };
+    }),
+  ];
+
+  const productSalesMap = new Map<number, number>();
+
+  salesTransactions.forEach((transaction) => {
+    productSalesMap.set(
+      transaction.product_id,
+      (productSalesMap.get(transaction.product_id) || 0) +
+        Math.abs(transaction.quantity),
+    );
+  });
+
+  const totalDays =
+    sortedDates.length > 0
+      ? Math.max(
+          1,
+          Math.ceil(
+            (new Date(sortedDates[sortedDates.length - 1]).getTime() -
+              new Date(sortedDates[0]).getTime()) /
+              (1000 * 60 * 60 * 24),
+          ) + 1,
+        )
+      : 1;
+
+  const reorderProducts = productData
+    .map((product) => {
+      const totalProductSales = productSalesMap.get(product.id) || 0;
+
+      const dailyDemand = totalProductSales / totalDays;
+
+      const predictedDemand = Math.max(
+        1,
+        Math.round(dailyDemand * 7),
+      );
+
+      const daysOfCoverage =
+        dailyDemand > 0
+          ? product.current_stock / dailyDemand
+          : Infinity;
+
+      const stockoutRisk =
+        product.current_stock <= 0
+          ? "At risk now"
+          : daysOfCoverage <= 7
+            ? `${Math.max(1, Math.round(daysOfCoverage))} days`
+            : "Low risk";
+
+      const suggestedOrder = Math.max(
+        0,
+        Math.ceil(dailyDemand * 14 - product.current_stock),
+      );
+
+      return {
+        product,
+        predictedDemand,
+        stockoutRisk,
+        suggestedOrder,
+        daysOfCoverage,
+      };
+    })
+    .filter(
+      (item) =>
+        item.product.current_stock <= item.product.reorder_level ||
+        item.daysOfCoverage <= 14,
+    )
+    .sort((a, b) => a.daysOfCoverage - b.daysOfCoverage)
+    .slice(0, 4);
+
+  const predictedSevenDayDemand = Math.round(
+    averageDailyDemand * 7,
+  );
+
+  const totalCurrentStock = productData.reduce(
+    (sum, product) => sum + product.current_stock,
+    0,
+  );
+
+  const expectedStockCoverage =
+    averageDailyDemand > 0
+      ? Math.round(totalCurrentStock / averageDailyDemand)
+      : 0;
+
+  const atRiskProducts = productData.filter((product) => {
+    const totalProductSales = productSalesMap.get(product.id) || 0;
+    const dailyDemand = totalProductSales / totalDays;
+
+    return (
+      product.current_stock <= 0 ||
+      (dailyDemand > 0 && product.current_stock / dailyDemand <= 7)
+    );
+  }).length;
+
   return (
     <div className="page">
       <PageHeader
@@ -1636,204 +2197,391 @@ function ForecastingPage() {
           </div>
         }
       />
+
       <div className="forecast-banner">
         <div className="forecast-icon">
           <Sparkles size={21} />
         </div>
+
         <div>
-          <strong>Forecasting preview</strong>
+          <strong>Demand forecast calculated</strong>
           <p>
-            This is a UI preview using sample data. Your Python forecasting
-            logic can plug into this view later.
+            Forecast is calculated from historical sales in the public
+            inventory dataset.
           </p>
         </div>
-        <span className="preview-pill">Mock data</span>
+
+        <span className="preview-pill">Dataset-based</span>
       </div>
-      <div className="forecast-grid">
-        <Card title="Historical & predicted demand" className="forecast-chart">
-          <div className="chart-legend">
-            <span>
-              <i className="dot blue-dot" />
-              Historical demand
-            </span>
-            <span>
-              <i className="dot purple-dot" />
-              Predicted demand
-            </span>
-            <span>
-              <i className="confidence-line" />
-              Confidence range
-            </span>
-          </div>
-          <div className="large-chart">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={forecastData}>
-                <defs>
-                  <linearGradient id="confidence" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#a878f6" stopOpacity={0.16} />
-                    <stop
-                      offset="100%"
-                      stopColor="#a878f6"
-                      stopOpacity={0.02}
-                    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="#263141" vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  tick={{ fill: "#8390a5", fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fill: "#8390a5", fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "#111a27",
-                    border: "1px solid #2a394e",
-                    borderRadius: 10,
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="upper"
-                  stroke="none"
-                  fill="url(#confidence)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="lower"
-                  stroke="none"
-                  fill="#0d1520"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="historical"
-                  stroke="#5487fa"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="predicted"
-                  stroke="#a878f6"
-                  strokeWidth={2.5}
-                  strokeDasharray="5 4"
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+
+      {loading ? (
+        <Card title="Loading forecast">
+          <p>Loading historical sales and inventory data...</p>
         </Card>
-        <div className="forecast-side">
-          <div className="forecast-stat">
-            <span>Predicted demand</span>
-            <strong>1,284 units</strong>
-            <small className="positive">
-              <ArrowUpRight size={13} />
-              +12.8% vs previous period
-            </small>
-          </div>
-          <div className="forecast-stat">
-            <span>Expected stock coverage</span>
-            <strong>18 days</strong>
-            <small>Across all tracked products</small>
-          </div>
-          <div className="forecast-stat danger">
-            <span>Potential stockout date</span>
-            <strong>Jun 30, 2024</strong>
-            <small>6 products at elevated risk</small>
-          </div>
-        </div>
-      </div>
-      <Card
-        title="Reorder intelligence"
-        action={
-          <button className="primary-button">
-            <Plus size={15} />
-            Create purchase order
-          </button>
-        }
-      >
-        <div className="reorder-table">
-          <div className="reorder-head">
-            <span>Product</span>
-            <span>Current stock</span>
-            <span>Predicted demand</span>
-            <span>Stockout risk</span>
-            <span>Suggested order</span>
-            <span>Supplier</span>
-          </div>
-          {mockProducts
-            .filter((p) => p.status !== "Healthy")
-            .slice(0, 4)
-            .map((product) => (
-              <div className="reorder-row" key={product.id}>
-                <div className="product-cell">
-                  <div className="product-thumb">
-                    <Package size={15} />
-                  </div>
-                  <div>
-                    <strong>{product.name}</strong>
-                    <span>{product.sku}</span>
-                  </div>
-                </div>
-                <strong>{product.stock}</strong>
-                <span>{product.stock + 33}</span>
-                <span className="negative">
-                  {product.status === "Out of Stock" ? "At risk now" : "6 days"}
+      ) : (
+        <>
+          <div className="forecast-grid">
+            <Card
+              title="Historical & predicted demand"
+              className="forecast-chart"
+            >
+              <div className="chart-legend">
+                <span>
+                  <i className="dot blue-dot" />
+                  Historical demand
                 </span>
-                <strong>{Math.max(50, product.reorderLevel * 2)}</strong>
-                <span>{product.supplier}</span>
+
+                <span>
+                  <i className="dot purple-dot" />
+                  Predicted demand
+                </span>
+
+                <span>
+                  <i className="confidence-line" />
+                  Confidence range
+                </span>
               </div>
-            ))}
-        </div>
-      </Card>
+
+              <div className="large-chart">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={forecastData}>
+                    <defs>
+                      <linearGradient
+                        id="confidence"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="#a878f6"
+                          stopOpacity={0.16}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="#a878f6"
+                          stopOpacity={0.02}
+                        />
+                      </linearGradient>
+                    </defs>
+
+                    <CartesianGrid
+                      stroke="#263141"
+                      vertical={false}
+                    />
+
+                    <XAxis
+                      dataKey="day"
+                      tick={{ fill: "#8390a5", fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+
+                    <YAxis
+                      tick={{ fill: "#8390a5", fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+
+                    <Tooltip
+                      contentStyle={{
+                        background: "#111a27",
+                        border: "1px solid #2a394e",
+                        borderRadius: 10,
+                      }}
+                    />
+
+                    <Area
+                      type="monotone"
+                      dataKey="upper"
+                      stroke="none"
+                      fill="url(#confidence)"
+                    />
+
+                    <Area
+                      type="monotone"
+                      dataKey="lower"
+                      stroke="none"
+                      fill="#0d1520"
+                    />
+
+                    <Line
+                      type="monotone"
+                      dataKey="historical"
+                      stroke="#5487fa"
+                      strokeWidth={2.5}
+                      dot={false}
+                    />
+
+                    <Line
+                      type="monotone"
+                      dataKey="predicted"
+                      stroke="#a878f6"
+                      strokeWidth={2.5}
+                      strokeDasharray="5 4"
+                      dot={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            <div className="forecast-side">
+              <div className="forecast-stat">
+                <span>Predicted demand</span>
+
+                <strong>
+                  {predictedSevenDayDemand.toLocaleString()} units
+                </strong>
+
+                <small className="positive">
+                  <ArrowUpRight size={13} />
+                  {demandChange >= 0 ? "+" : ""}
+                  {demandChange.toFixed(1)}% vs previous period
+                </small>
+              </div>
+
+              <div className="forecast-stat">
+                <span>Expected stock coverage</span>
+
+                <strong>
+                  {expectedStockCoverage.toLocaleString()} days
+                </strong>
+
+                <small>Across all tracked products</small>
+              </div>
+
+              <div className="forecast-stat danger">
+                <span>Stockout risk</span>
+
+                <strong>{atRiskProducts} products</strong>
+
+                <small>
+                  Based on current stock and historical demand
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <Card
+            title="Reorder intelligence"
+            action={
+              <button className="primary-button">
+                <Plus size={15} />
+                Create purchase order
+              </button>
+            }
+          >
+            <div className="reorder-table">
+              <div className="reorder-head">
+                <span>Product</span>
+                <span>Current stock</span>
+                <span>Predicted demand</span>
+                <span>Stockout risk</span>
+                <span>Suggested order</span>
+                <span>Supplier</span>
+              </div>
+
+              {reorderProducts.map((item) => (
+                <div
+                  className="reorder-row"
+                  key={item.product.id}
+                >
+                  <div className="product-cell">
+                    <div className="product-thumb">
+                      <Package size={15} />
+                    </div>
+
+                    <div>
+                      <strong>{item.product.name}</strong>
+                      <span>{item.product.sku}</span>
+                    </div>
+                  </div>
+
+                  <strong>{item.product.current_stock}</strong>
+
+                  <span>
+                    {item.predictedDemand.toLocaleString()}
+                  </span>
+
+                  <span
+                    className={
+                      item.stockoutRisk === "Low risk"
+                        ? "positive"
+                        : "negative"
+                    }
+                  >
+                    {item.stockoutRisk}
+                  </span>
+
+                  <strong>
+                    {item.suggestedOrder.toLocaleString()}
+                  </strong>
+
+                  <span>N/A</span>
+                </div>
+              ))}
+
+              {reorderProducts.length === 0 && (
+                <div className="reorder-row">
+                  <span>No products currently require reordering.</span>
+                </div>
+              )}
+            </div>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
 
-function AlertsPage({ showToast }: { showToast: (message: string) => void }) {
+function AlertsPage({
+  showToast,
+}: {
+  showToast: (message: string) => void;
+}) {
+  type BackendTransaction = {
+    id: number;
+    product_id: number;
+    type: string;
+    quantity: number;
+    transaction_date: string;
+  };
+
+  type BackendProduct = {
+    id: number;
+    name: string;
+    sku: string;
+    current_stock: number;
+    reorder_level: number;
+  };
+
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+  const [transactions, setTransactions] = useState<BackendTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadAlertData() {
+      try {
+        const [productData, transactionData] = await Promise.all([
+          apiGet<BackendProduct[]>("/products"),
+          apiGet<BackendTransaction[]>("/transactions"),
+        ]);
+
+        setProducts(productData);
+        setTransactions(transactionData);
+      } catch (error) {
+        console.error("Failed to load alerts:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadAlertData();
+  }, []);
+
+  const salesTransactions = transactions.filter(
+    (transaction) => transaction.type.toLowerCase() === "sale",
+  );
+
+  const totalDays =
+    transactions.length > 0
+      ? Math.max(
+          1,
+          new Set(
+            transactions.map((transaction) =>
+              transaction.transaction_date?.split(" ")[0],
+            ),
+          ).size,
+        )
+      : 1;
+
+  const salesByProduct = new Map<number, number>();
+
+  salesTransactions.forEach((transaction) => {
+    salesByProduct.set(
+      transaction.product_id,
+      (salesByProduct.get(transaction.product_id) || 0) +
+        Math.abs(transaction.quantity),
+    );
+  });
+
+  const criticalProducts = products.filter(
+    (product) => product.current_stock <= 0,
+  );
+
+  const lowStockProducts = products.filter(
+    (product) =>
+      product.current_stock > 0 &&
+      product.current_stock <= product.reorder_level,
+  );
+
+  const stockoutRiskProducts = products.filter((product) => {
+    const totalSales = salesByProduct.get(product.id) || 0;
+    const dailyDemand = totalSales / totalDays;
+
+    return (
+      product.current_stock > 0 &&
+      dailyDemand > 0 &&
+      product.current_stock / dailyDemand <= 7
+    );
+  });
+
+  const unusualDemandProduct = products
+    .map((product) => ({
+      product,
+      sales: salesByProduct.get(product.id) || 0,
+    }))
+    .sort((a, b) => b.sales - a.sales)[0];
+
   const alerts = [
-    {
-      title: "8 products are out of stock",
+    ...criticalProducts.slice(0, 3).map((product) => ({
+      title: `${product.name} is out of stock`,
       detail: "Immediate attention required",
       type: "Critical Stock",
-      time: "2 min ago",
+      time: "Current",
       tone: "critical",
-    },
-    {
-      title: "37 products are running low",
-      detail: "Reorder suggested for high velocity items",
+    })),
+
+    ...lowStockProducts.slice(0, 3).map((product) => ({
+      title: `${product.name} is running low`,
+      detail: `Current stock: ${product.current_stock} units. Reorder level: ${product.reorder_level} units.`,
       type: "Low Stock",
-      time: "15 min ago",
+      time: "Current",
       tone: "warning",
-    },
-    {
-      title: "5 products may stockout soon",
-      detail: "Based on predicted demand over the next 7 days",
-      type: "Stockout Risk",
-      time: "28 min ago",
-      tone: "warning",
-    },
-    {
-      title: "Unusual demand for USB-C Hub",
-      detail: "Sales are 42% higher than the previous period",
-      type: "Unusual Demand",
-      time: "1 hr ago",
-      tone: "info",
-    },
-    {
-      title: "Supplier delay detected",
-      detail: "TechSource Inc. delivery is 3 days overdue",
-      type: "Supplier Delay",
-      time: "2 hrs ago",
-      tone: "info",
-    },
+    })),
+
+    ...stockoutRiskProducts.slice(0, 2).map((product) => {
+      const totalSales = salesByProduct.get(product.id) || 0;
+      const dailyDemand = totalSales / totalDays;
+      const daysLeft =
+        dailyDemand > 0
+          ? Math.max(1, Math.round(product.current_stock / dailyDemand))
+          : 0;
+
+      return {
+        title: `${product.name} may stockout soon`,
+        detail: `Estimated ${daysLeft} days of stock remaining based on historical sales.`,
+        type: "Stockout Risk",
+        time: "Current",
+        tone: "warning",
+      };
+    }),
+
+    ...(unusualDemandProduct
+      ? [
+          {
+            title: `High sales activity for ${unusualDemandProduct.product.name}`,
+            detail: `${unusualDemandProduct.sales.toLocaleString()} units sold in the available dataset.`,
+            type: "Unusual Demand",
+            time: "Dataset",
+            tone: "info",
+          },
+        ]
+      : []),
   ];
+
   return (
     <div className="page">
       <PageHeader
@@ -1847,56 +2595,103 @@ function AlertsPage({ showToast }: { showToast: (message: string) => void }) {
           </button>
         }
       />
+
       <div className="alert-overview">
         <div className="alert-overview-critical">
           <AlertTriangle size={19} />
           <div>
-            <strong>8 critical alerts</strong>
+            <strong>{criticalProducts.length} critical alerts</strong>
             <span>Require immediate attention</span>
           </div>
         </div>
+
         <div>
-          <strong>37</strong>
+          <strong>{lowStockProducts.length}</strong>
           <span>Low stock</span>
         </div>
+
         <div>
-          <strong>5</strong>
+          <strong>{stockoutRiskProducts.length}</strong>
           <span>Stockout risk</span>
         </div>
+
         <div>
-          <strong>2</strong>
+          <strong>N/A</strong>
           <span>Supplier delays</span>
         </div>
       </div>
+
       <Card
         title="Active alerts"
-        action={<button className="plain-link">Mark all as read</button>}
+        action={
+          <button
+            className="plain-link"
+            onClick={() => showToast("All alerts marked as read.")}
+          >
+            Mark all as read
+          </button>
+        }
       >
         <div className="full-alert-list">
-          {alerts.map((alert) => (
-            <div className={`full-alert ${alert.tone}`} key={alert.title}>
-              <div className="full-alert-icon">
-                <AlertTriangle size={17} />
-              </div>
+          {loading ? (
+            <div className="full-alert info">
               <div className="full-alert-copy">
-                <div>
-                  <span className="alert-type">{alert.type}</span>
-                  <time>{alert.time}</time>
-                </div>
-                <strong>{alert.title}</strong>
-                <p>{alert.detail}</p>
-              </div>
-              <div className="alert-actions">
-                <button onClick={() => showToast("Alert marked as resolved.")}>
-                  Resolve
-                </button>
-                <button>View product</button>
-                <button className="more-button">
-                  <MoreHorizontal size={16} />
-                </button>
+                <strong>Loading alerts...</strong>
+                <p>Checking current inventory and historical sales.</p>
               </div>
             </div>
-          ))}
+          ) : alerts.length === 0 ? (
+            <div className="full-alert info">
+              <div className="full-alert-copy">
+                <strong>No active alerts</strong>
+                <p>All tracked inventory is currently within safe levels.</p>
+              </div>
+            </div>
+          ) : (
+            alerts.map((alert, index) => (
+              <div
+                className={`full-alert ${alert.tone}`}
+                key={`${alert.type}-${alert.title}-${index}`}
+              >
+                <div className="full-alert-icon">
+                  <AlertTriangle size={17} />
+                </div>
+
+                <div className="full-alert-copy">
+                  <div>
+                    <span className="alert-type">{alert.type}</span>
+                    <time>{alert.time}</time>
+                  </div>
+
+                  <strong>{alert.title}</strong>
+
+                  <p>{alert.detail}</p>
+                </div>
+
+                <div className="alert-actions">
+                  <button
+                    onClick={() =>
+                      showToast("Alert marked as resolved.")
+                    }
+                  >
+                    Resolve
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      showToast("Product details available in Inventory.")
+                    }
+                  >
+                    View product
+                  </button>
+
+                  <button className="more-button">
+                    <MoreHorizontal size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </Card>
     </div>
