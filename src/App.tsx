@@ -548,40 +548,40 @@ function Overview({
 const kpis = [
   {
     label: "Total Products",
-    value: "12,458",
-    change: "+12.5%",
+    value: "0",
+    change: "Dataset-based",
     icon: Package,
     tone: "green",
     points: [12, 18, 11, 23, 18, 28, 20, 34],
   },
   {
     label: "Inventory Value",
-    value: "$486,750",
-    change: "+8.4%",
+    value: "$0",
+    change: "Dataset-based",
     icon: Target,
     tone: "purple",
     points: [12, 20, 15, 28, 19, 30, 24, 36],
   },
   {
     label: "Low Stock Items",
-    value: "37",
-    change: "+5.2%",
+    value: "0",
+    change: "Current stock",
     icon: AlertTriangle,
     tone: "amber",
     points: [9, 20, 14, 23, 17, 31, 25, 37],
   },
   {
     label: "Out of Stock",
-    value: "8",
-    change: "+33.3%",
+    value: "0",
+    change: "Current stock",
     icon: Boxes,
     tone: "red",
     points: [10, 15, 13, 18, 17, 26, 23, 36],
   },
   {
     label: "Inventory Turnover",
-    value: "4.8x",
-    change: "+14.6%",
+    value: "N/A",
+    change: "Dataset-based",
     icon: BarChart3,
     tone: "blue",
     points: [8, 19, 14, 24, 18, 27, 24, 35],
@@ -589,6 +589,41 @@ const kpis = [
 ];
 
 function KpiGrid({ totalProducts }: { totalProducts: number }) {
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+
+  useEffect(() => {
+    apiGet<BackendProduct[]>("/products")
+      .then((data) => setProducts(data))
+      .catch((error) => {
+        console.error("Failed to load KPI data:", error);
+      });
+  }, []);
+
+  const inventoryValue = products.reduce(
+    (total, product) =>
+      total + product.current_stock * product.unit_price,
+    0,
+  );
+
+  const lowStockItems = products.filter(
+    (product) => product.current_stock > 0 &&
+      product.current_stock <= product.reorder_level,
+  ).length;
+
+  const outOfStockItems = products.filter(
+    (product) => product.current_stock === 0,
+  ).length;
+
+  const kpiValues: Record<string, string> = {
+    "Total Products": totalProducts.toLocaleString(),
+    "Inventory Value": `$${inventoryValue.toLocaleString(undefined, {
+      maximumFractionDigits: 0,
+    })}`,
+    "Low Stock Items": lowStockItems.toLocaleString(),
+    "Out of Stock": outOfStockItems.toLocaleString(),
+    "Inventory Turnover": "N/A",
+  };
+
   return (
     <div className="kpi-grid">
       {kpis.map((kpi, index) => (
@@ -605,18 +640,23 @@ function KpiGrid({ totalProducts }: { totalProducts: number }) {
               <kpi.icon size={17} />
             </div>
           </div>
+
           <strong>
-  {kpi.label === "Total Products"
-    ? totalProducts.toLocaleString()
-    : kpi.value}
-</strong>
+            {kpiValues[kpi.label] ?? kpi.value}
+          </strong>
+
           <div className="kpi-bottom">
             <span className="positive">
               <ArrowUpRight size={12} />
               {kpi.change}
             </span>
-            <small>vs last 30 days</small>
+            <small>
+              {kpi.label === "Inventory Turnover"
+                ? "Not available in dataset"
+                : "From public dataset"}
+            </small>
           </div>
+
           <MiniSparkline points={kpi.points} tone={kpi.tone} />
         </motion.div>
       ))}
@@ -655,34 +695,86 @@ function Card({
   );
 }
 function HealthCard() {
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+
+  useEffect(() => {
+    apiGet<BackendProduct[]>("/products")
+      .then((data) => setProducts(data))
+      .catch((error) => {
+        console.error("Failed to load health data:", error);
+      });
+  }, []);
+
+  const totalProducts = products.length;
+
+  const healthyProducts = products.filter(
+    (product) => product.current_stock > product.reorder_level,
+  ).length;
+
+  const stockAvailability =
+    totalProducts > 0
+      ? Math.round((healthyProducts / totalProducts) * 100)
+      : 0;
+
+  const healthMetrics = [
+    {
+      label: "Stock Availability",
+      value: `${stockAvailability}%`,
+      tone: stockAvailability >= 80 ? "green" : "amber",
+      width: `${stockAvailability}%`,
+    },
+    {
+      label: "Demand Accuracy",
+      value: "N/A",
+      tone: "amber",
+      width: "0%",
+    },
+    {
+      label: "Turnover Efficiency",
+      value: "N/A",
+      tone: "green",
+      width: "0%",
+    },
+    {
+      label: "Supply Reliability",
+      value: "N/A",
+      tone: "green",
+      width: "0%",
+    },
+  ];
+
   return (
     <Card title="Inventory Health Score" className="health-card">
       <div className="health-content">
         <div className="score-ring">
           <div>
-            <strong>87</strong>
+            <strong>{stockAvailability}</strong>
             <span>/100</span>
           </div>
         </div>
+
         <div className="health-bars">
-          {[
-            ["Stock Availability", "92%", "green"],
-            ["Demand Accuracy", "84%", "amber"],
-            ["Turnover Efficiency", "86%", "green"],
-            ["Supply Reliability", "88%", "green"],
-          ].map(([label, value, tone]) => (
-            <div className="health-bar" key={label}>
+          {healthMetrics.map((metric) => (
+            <div className="health-bar" key={metric.label}>
               <div>
-                <span>{label}</span>
-                <b>{value}</b>
+                <span>{metric.label}</span>
+                <b>{metric.value}</b>
               </div>
+
               <div className="bar-track">
-                <i className={tone} style={{ width: value }} />
+                {metric.value !== "N/A" && (
+                  <i
+                    className={metric.tone}
+                    style={{ width: metric.width }}
+                  />
+                )}
               </div>
             </div>
           ))}
+
           <div className="healthy-label">
-            <span>✓</span>Healthy
+            <span>✓</span>
+            {stockAvailability >= 80 ? "Healthy" : "Needs Attention"}
           </div>
         </div>
       </div>
@@ -690,6 +782,86 @@ function HealthCard() {
   );
 }
 function TrendCard() {
+  type DatasetTransaction = {
+    id: number;
+    product_id: number;
+    user_id: number | null;
+    type: string;
+    quantity: number;
+    unit_price: number;
+    total_amount: number;
+    notes: string | null;
+    transaction_date: string;
+  };
+
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+  const [transactions, setTransactions] = useState<DatasetTransaction[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      apiGet<BackendProduct[]>("/products"),
+      apiGet<DatasetTransaction[]>("/transactions"),
+    ])
+      .then(([productData, transactionData]) => {
+        setProducts(productData);
+        setTransactions(transactionData);
+      })
+      .catch((error) => {
+        console.error("Failed to load trend data:", error);
+      });
+  }, []);
+
+  const inventoryValue = products.reduce(
+    (total, product) =>
+      total + product.current_stock * product.unit_price,
+    0,
+  );
+
+  const salesByDate = new Map<string, number>();
+
+  transactions.forEach((transaction) => {
+    const dateValue = transaction.transaction_date;
+
+    if (!dateValue) return;
+
+    const dateMatch = String(dateValue).match(/\d{4}-\d{2}-\d{2}/);
+
+    if (!dateMatch) return;
+
+    const date = dateMatch[0];
+
+    const transactionType = String(transaction.type || "").toLowerCase();
+
+    if (
+      transactionType !== "sale" &&
+      transactionType !== "sales"
+    ) {
+      return;
+    }
+
+    const salesValue =
+      Number(transaction.quantity || 0) *
+      Number(transaction.unit_price || 0);
+
+    salesByDate.set(
+      date,
+      (salesByDate.get(date) || 0) + salesValue,
+    );
+  });
+
+  const sortedDates = Array.from(salesByDate.keys()).sort();
+
+  const recentDates = sortedDates.slice(-30);
+
+  const chartData = recentDates.map((date) => ({
+    day: new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
+    value: Math.round(inventoryValue / 1000),
+    sales: Math.round((salesByDate.get(date) || 0) / 1000),
+  }));
+
   return (
     <Card
       title="Inventory Value Trend"
@@ -708,111 +880,232 @@ function TrendCard() {
           <i className="dot green-dot" />
           Inventory Value
         </span>
+
         <span>
           <i className="dot blue-dot" />
           Sales
         </span>
-        <span>
+
+        <span style={{ opacity: 0.5 }}>
           <i className="dot purple-dot" />
-          Purchases
+          Purchases N/A
         </span>
       </div>
+
       <div className="trend-chart">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={trendData}>
-            <defs>
-              <linearGradient id="greenFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#48d597" stopOpacity={0.25} />
-                <stop offset="100%" stopColor="#48d597" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="purpleFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#a878f6" stopOpacity={0.18} />
-                <stop offset="100%" stopColor="#a878f6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid stroke="#263141" vertical={false} />
-            <XAxis
-              dataKey="day"
-              tick={{ fill: "#8390a5", fontSize: 10 }}
-              tickLine={false}
-              axisLine={false}
-              interval={2}
-            />
-            <YAxis
-              tick={{ fill: "#8390a5", fontSize: 10 }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(value) => `$${value}K`}
-              domain={[0, 700]}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "#111a27",
-                border: "1px solid #2a394e",
-                borderRadius: 10,
-                color: "#fff",
-              }}
-              formatter={(value) => `${value}K`}
-            />
-            <Area
-              type="monotone"
-              dataKey="value"
-              stroke="#48d597"
-              fill="url(#greenFill)"
-              strokeWidth={2}
-            />
-            <Line
-              type="monotone"
-              dataKey="sales"
-              stroke="#5487fa"
-              strokeWidth={2}
-              dot={false}
-            />
-            <Area
-              type="monotone"
-              dataKey="purchases"
-              stroke="#a878f6"
-              fill="url(#purpleFill)"
-              strokeWidth={2}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        {chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient
+                  id="greenFill"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="0%"
+                    stopColor="#48d597"
+                    stopOpacity={0.25}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="#48d597"
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+
+              <CartesianGrid
+                stroke="#263141"
+                vertical={false}
+              />
+
+              <XAxis
+                dataKey="day"
+                tick={{ fill: "#8390a5", fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                interval={2}
+              />
+
+              <YAxis
+                tick={{ fill: "#8390a5", fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `$${value}K`}
+                domain={[0, "auto"]}
+              />
+
+              <Tooltip
+                contentStyle={{
+                  background: "#111a27",
+                  border: "1px solid #2a394e",
+                  borderRadius: 10,
+                  color: "#fff",
+                }}
+                formatter={(value, name) => {
+                  if (name === "value") {
+                    return [
+                      `$${Number(value ?? 0)}K`,
+                      "Inventory Value",
+                    ];
+                  }
+
+                  return [
+                    `$${Number(value ?? 0)}K`,
+                    "Sales",
+                  ];
+                }}
+              />
+
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="#48d597"
+                fill="url(#greenFill)"
+                strokeWidth={2}
+              />
+
+              <Line
+                type="monotone"
+                dataKey="sales"
+                stroke="#5487fa"
+                strokeWidth={2}
+                dot={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#8390a5",
+              fontSize: 13,
+            }}
+          >
+            Loading sales data...
+          </div>
+        )}
       </div>
     </Card>
   );
 }
 function ActivityCard() {
+  type DatasetTransaction = {
+    id: number;
+    product_id: number;
+    user_id: number | null;
+    type: string;
+    quantity: number;
+    unit_price: number;
+    total_amount: number;
+    notes: string | null;
+    transaction_date: string;
+  };
+
+  const [transactions, setTransactions] = useState<DatasetTransaction[]>([]);
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      apiGet<DatasetTransaction[]>("/transactions"),
+      apiGet<BackendProduct[]>("/products"),
+    ])
+      .then(([transactionData, productData]) => {
+        setTransactions(transactionData);
+        setProducts(productData);
+      })
+      .catch((error) => {
+        console.error("Failed to load activity data:", error);
+      });
+  }, []);
+
+  const productMap = new Map(
+    products.map((product) => [product.id, product]),
+  );
+
+  const recentTransactions = transactions.slice(0, 5);
+
+  const formatDate = (dateValue: string) => {
+    const dateMatch = String(dateValue).match(
+      /\d{4}-\d{2}-\d{2}/,
+    );
+
+    if (!dateMatch) return "Dataset";
+
+    return new Date(
+      `${dateMatch[0]}T00:00:00`,
+    ).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   return (
     <Card
-      title="Real-time Activity"
+      title="Recent Activity"
       className="activity-card"
       action={
         <span className="live-label">
           <i />
-          Live
+          Dataset
         </span>
       }
     >
       <div className="activity-list">
-        {activities.map((activity) => (
-          <motion.div
-            className="activity-row"
-            key={activity.id}
-            initial={{ opacity: 0, x: 8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: Number(activity.id) * 0.08 }}
+        {recentTransactions.length > 0 ? (
+          recentTransactions.map((transaction, index) => {
+            const product = productMap.get(transaction.product_id);
+
+            return (
+              <motion.div
+                className="activity-row"
+                key={transaction.id}
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.08 }}
+              >
+                <div className="activity-icon blue">
+                  <Activity size={14} />
+                </div>
+
+                <div>
+                  <strong>
+                    {transaction.type === "Sale"
+                      ? "Product sold"
+                      : transaction.type}
+                  </strong>
+
+                  <span>
+                    {product?.name || `Product #${transaction.product_id}`}
+                  </span>
+                </div>
+
+                <time>
+                  {formatDate(transaction.transaction_date)}
+                </time>
+              </motion.div>
+            );
+          })
+        ) : (
+          <div
+            style={{
+              padding: "24px 0",
+              textAlign: "center",
+              color: "#8390a5",
+              fontSize: 13,
+            }}
           >
-            <div className={`activity-icon ${activity.tone}`}>
-              <Activity size={14} />
-            </div>
-            <div>
-              <strong>{activity.title}</strong>
-              <span>{activity.product}</span>
-            </div>
-            <time>{activity.time}</time>
-          </motion.div>
-        ))}
+            Loading activity...
+          </div>
+        )}
       </div>
+
       <button className="view-link">
         View all activity <ArrowRight size={14} />
       </button>
@@ -820,12 +1113,66 @@ function ActivityCard() {
   );
 }
 function StatusCard() {
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+
+  useEffect(() => {
+    apiGet<BackendProduct[]>("/products")
+      .then((data) => setProducts(data))
+      .catch((error) => {
+        console.error("Failed to load status data:", error);
+      });
+  }, []);
+
+  const totalProducts = products.length;
+
+  const healthyCount = products.filter(
+    (product) => product.current_stock > product.reorder_level,
+  ).length;
+
+  const lowStockCount = products.filter(
+    (product) =>
+      product.current_stock > 0 &&
+      product.current_stock <= product.reorder_level,
+  ).length;
+
+  const outOfStockCount = products.filter(
+    (product) => product.current_stock === 0,
+  ).length;
+
+  const criticalCount = 0;
+
+  const getPercent = (value: number) =>
+    totalProducts > 0
+      ? ((value / totalProducts) * 100).toFixed(1)
+      : "0.0";
+
   const status = [
-    { label: "Healthy", value: "8,742", percent: "70.1%", color: "#48d597" },
-    { label: "Low Stock", value: "2,103", percent: "16.9%", color: "#f5aa38" },
-    { label: "Critical", value: "945", percent: "7.6%", color: "#ee5b62" },
-    { label: "Out of Stock", value: "668", percent: "5.4%", color: "#a878f6" },
+    {
+      label: "Healthy",
+      value: healthyCount,
+      percent: getPercent(healthyCount),
+      color: "#48d597",
+    },
+    {
+      label: "Low Stock",
+      value: lowStockCount,
+      percent: getPercent(lowStockCount),
+      color: "#f5aa38",
+    },
+    {
+      label: "Critical",
+      value: criticalCount,
+      percent: getPercent(criticalCount),
+      color: "#ee5b62",
+    },
+    {
+      label: "Out of Stock",
+      value: outOfStockCount,
+      percent: getPercent(outOfStockCount),
+      color: "#a878f6",
+    },
   ];
+
   return (
     <Card title="Stock Status Overview" className="status-card">
       <div className="status-content">
@@ -833,7 +1180,7 @@ function StatusCard() {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={status}
+                data={status.filter((item) => item.value > 0)}
                 dataKey="value"
                 innerRadius={48}
                 outerRadius={74}
@@ -843,17 +1190,24 @@ function StatusCard() {
                 stroke="#101824"
                 strokeWidth={2}
               >
-                {status.map((entry) => (
-                  <Cell key={entry.label} fill={entry.color} />
-                ))}
+                {status
+                  .filter((item) => item.value > 0)
+                  .map((entry) => (
+                    <Cell
+                      key={entry.label}
+                      fill={entry.color}
+                    />
+                  ))}
               </Pie>
             </PieChart>
           </ResponsiveContainer>
+
           <div className="donut-center">
-            <strong>12,458</strong>
+            <strong>{totalProducts.toLocaleString()}</strong>
             <span>Products</span>
           </div>
         </div>
+
         <div className="status-legend">
           {status.map((item) => (
             <div key={item.label}>
@@ -861,8 +1215,16 @@ function StatusCard() {
                 <i style={{ background: item.color }} />
                 {item.label}
               </span>
+
               <b>
-                {item.value} <small>({item.percent})</small>
+                {item.label === "Critical"
+                  ? "N/A"
+                  : item.value.toLocaleString()}{" "}
+                <small>
+                  {item.label === "Critical"
+                    ? "(not available)"
+                    : `(${item.percent}%)`}
+                </small>
               </b>
             </div>
           ))}
@@ -872,26 +1234,112 @@ function StatusCard() {
   );
 }
 function CategoriesCard() {
+  type DatasetCategory = {
+    id: number;
+    name: string;
+  };
+
+  type ProductWithCategory = BackendProduct & {
+    category_id?: number;
+  };
+
+  const [products, setProducts] = useState<ProductWithCategory[]>([]);
+  const [categories, setCategories] = useState<DatasetCategory[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      apiGet<BackendProduct[]>("/products"),
+      apiGet<DatasetCategory[]>("/categories"),
+    ])
+      .then(([productData, categoryData]) => {
+        setProducts(productData as ProductWithCategory[]);
+        setCategories(categoryData);
+      })
+      .catch((error) => {
+        console.error("Failed to load category data:", error);
+      });
+  }, []);
+
+  const categoryMap = new Map(
+    categories.map((category) => [category.id, category.name]),
+  );
+
+  const categoryValues = new Map<string, number>();
+
+  products.forEach((product) => {
+    const categoryName =
+      categoryMap.get(product.category_id ?? 0) || "Unknown";
+
+    const value =
+      Number(product.current_stock || 0) *
+      Number(product.unit_price || 0);
+
+    categoryValues.set(
+      categoryName,
+      (categoryValues.get(categoryName) || 0) + value,
+    );
+  });
+
+  const categoryData = Array.from(categoryValues.entries())
+    .map(([name, value]) => ({
+      name,
+      value,
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+
+  const highestValue =
+    categoryData.length > 0 ? categoryData[0].value : 1;
+
+  const categoryColors = [
+    "#48d597",
+    "#5487fa",
+    "#a878f6",
+    "#f5aa38",
+    "#ee5b62",
+  ];
+
   return (
-    <Card title="Top Categories by Value" className="categories-card">
+    <Card
+      title="Top Categories by Value"
+      className="categories-card"
+    >
       <div className="category-list">
-        {categoryData.map((item) => (
-          <div className="category-row" key={item.name}>
-            <div>
-              <span>{item.name}</span>
-              <b>${item.value.toLocaleString()}</b>
+        {categoryData.length > 0 ? (
+          categoryData.map((item, index) => (
+            <div
+              className="category-row"
+              key={item.name}
+            >
+              <div>
+                <span>{item.name}</span>
+                <b>
+                  ${Math.round(item.value).toLocaleString()}
+                </b>
+              </div>
+
+              <div className="category-track">
+                <i
+                  style={{
+                    width: `${(item.value / highestValue) * 100}%`,
+                    background: categoryColors[index],
+                  }}
+                />
+              </div>
             </div>
-            <div className="category-track">
-              <i
-                style={{
-                  width: `${(item.value / categoryData[0].value) * 100}%`,
-                  background: item.color,
-                }}
-              />
-            </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <span
+            style={{
+              color: "#8390a5",
+              fontSize: 13,
+            }}
+          >
+            Loading category data...
+          </span>
+        )}
       </div>
+
       <button className="view-link">
         View full analytics <ArrowRight size={14} />
       </button>
@@ -899,6 +1347,32 @@ function CategoriesCard() {
   );
 }
 function SmartAlerts() {
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+
+  useEffect(() => {
+    apiGet<BackendProduct[]>("/products")
+      .then((data) => setProducts(data))
+      .catch((error) => {
+        console.error("Failed to load alert data:", error);
+      });
+  }, []);
+
+  const outOfStockCount = products.filter(
+    (product) => product.current_stock === 0,
+  ).length;
+
+  const lowStockCount = products.filter(
+    (product) =>
+      product.current_stock > 0 &&
+      product.current_stock <= product.reorder_level,
+  ).length;
+
+  const stockoutRiskCount = products.filter(
+    (product) =>
+      product.current_stock > 0 &&
+      product.current_stock <= product.reorder_level,
+  ).length;
+
   return (
     <Card
       title="Smart Alerts"
@@ -913,29 +1387,50 @@ function SmartAlerts() {
         <div className="alert-row critical">
           <AlertTriangle size={14} />
           <div>
-            <strong>8 products are out of stock</strong>
-            <span>Immediate attention required</span>
+            <strong>
+              {outOfStockCount} products are out of stock
+            </strong>
+            <span>
+              {outOfStockCount > 0
+                ? "Immediate attention required"
+                : "No products currently out of stock"}
+            </span>
           </div>
         </div>
+
         <div className="alert-row warning">
           <AlertTriangle size={14} />
           <div>
-            <strong>37 products are running low</strong>
-            <span>Reorder suggested</span>
+            <strong>
+              {lowStockCount} products are running low
+            </strong>
+            <span>
+              {lowStockCount > 0
+                ? "Reorder suggested"
+                : "No low-stock products"}
+            </span>
           </div>
         </div>
+
         <div className="alert-row warning">
           <Clock3 size={14} />
           <div>
-            <strong>5 products may stockout soon</strong>
-            <span>Within next 7 days</span>
+            <strong>
+              {stockoutRiskCount} products need attention
+            </strong>
+            <span>
+              Based on current stock levels
+            </span>
           </div>
         </div>
+
         <div className="alert-row info">
           <Truck size={14} />
           <div>
-            <strong>2 suppliers with delayed deliveries</strong>
-            <span>Check supplier performance</span>
+            <strong>Supplier data unavailable</strong>
+            <span>
+              Source dataset does not contain supplier information
+            </span>
           </div>
         </div>
       </div>
@@ -943,13 +1438,98 @@ function SmartAlerts() {
   );
 }
 function InsightCard() {
+  type DatasetTransaction = {
+    id: number;
+    product_id: number;
+    user_id: number | null;
+    type: string;
+    quantity: number;
+    unit_price: number;
+    total_amount: number;
+    notes: string | null;
+    transaction_date: string;
+  };
+
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+  const [transactions, setTransactions] = useState<DatasetTransaction[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      apiGet<BackendProduct[]>("/products"),
+      apiGet<DatasetTransaction[]>("/transactions"),
+    ])
+      .then(([productData, transactionData]) => {
+        setProducts(productData);
+        setTransactions(transactionData);
+      })
+      .catch((error) => {
+        console.error("Failed to load insight data:", error);
+      });
+  }, []);
+
+  const salesTransactions = transactions.filter(
+    (transaction) =>
+      String(transaction.type).toLowerCase() === "sale",
+  );
+
+  const dates = Array.from(
+    new Set(
+      salesTransactions
+        .map((transaction) => {
+          const match = String(
+            transaction.transaction_date,
+          ).match(/\d{4}-\d{2}-\d{2}/);
+
+          return match ? match[0] : null;
+        })
+        .filter(Boolean),
+    ),
+  ).sort();
+
+  const recentDates = dates.slice(-7);
+
+  const recentSales = salesTransactions.filter((transaction) => {
+    const match = String(
+      transaction.transaction_date,
+    ).match(/\d{4}-\d{2}-\d{2}/);
+
+    return match && recentDates.includes(match[0]);
+  });
+
+  const salesByProduct = new Map<number, number>();
+
+  recentSales.forEach((transaction) => {
+    salesByProduct.set(
+      transaction.product_id,
+      (salesByProduct.get(transaction.product_id) || 0) +
+        Number(transaction.quantity || 0),
+    );
+  });
+
+  const stockoutRiskCount = products.filter((product) => {
+    const unitsSold = salesByProduct.get(product.id) || 0;
+
+    if (unitsSold <= 0) return false;
+
+    const days = recentDates.length || 1;
+    const dailyDemand = unitsSold / days;
+
+    const stockCoverage =
+      product.current_stock / dailyDemand;
+
+    return stockCoverage <= 7;
+  }).length;
+
   return (
     <Card title="AI Insight" className="insight-card">
       <Sparkles className="insight-spark" size={34} />
+
       <p>
-        Based on current trends, you may face stockouts in{" "}
-        <strong>6 products</strong> within the next 7 days.
+        Based on recent sales activity,{" "}
+        <strong>{stockoutRiskCount} products</strong> may
+        face stockout risk within the next 7 days.
       </p>
+
       <button className="purple-button">
         View Predictions <ArrowRight size={14} />
       </button>
@@ -957,29 +1537,105 @@ function InsightCard() {
   );
 }
 function SummaryCard() {
+  type DatasetTransaction = {
+    id: number;
+    product_id: number;
+    user_id: number | null;
+    type: string;
+    quantity: number;
+    unit_price: number;
+    total_amount: number;
+    notes: string | null;
+    transaction_date: string;
+  };
+
+  const [transactions, setTransactions] = useState<DatasetTransaction[]>([]);
+  const [products, setProducts] = useState<BackendProduct[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      apiGet<DatasetTransaction[]>("/transactions"),
+      apiGet<BackendProduct[]>("/products"),
+    ])
+      .then(([transactionData, productData]) => {
+        setTransactions(transactionData);
+        setProducts(productData);
+      })
+      .catch((error) => {
+        console.error("Failed to load summary data:", error);
+      });
+  }, []);
+
+  const salesTransactions = transactions.filter(
+    (transaction) =>
+      String(transaction.type).toLowerCase() === "sale",
+  );
+
+  const totalSales = salesTransactions.reduce(
+    (total, transaction) =>
+      total + Number(transaction.total_amount || 0),
+    0,
+  );
+
+  const totalTransactions = transactions.length;
+
+  const averageSaleValue =
+    salesTransactions.length > 0
+      ? totalSales / salesTransactions.length
+      : 0;
+
+  const summaryStats = [
+    {
+      label: "Sales",
+      value: `$${Math.round(totalSales).toLocaleString()}`,
+      change: "Dataset total",
+    },
+    {
+      label: "Purchases",
+      value: "N/A",
+      change: "Not available",
+    },
+    {
+      label: "Products",
+      value: products.length.toLocaleString(),
+      change: "Current catalog",
+    },
+    {
+      label: "Transactions",
+      value: totalTransactions.toLocaleString(),
+      change: "Dataset total",
+    },
+    {
+      label: "Avg. Sale Value",
+      value: `$${averageSaleValue.toFixed(2)}`,
+      change: "Calculated",
+    },
+    {
+      label: "Gross Profit",
+      value: "N/A",
+      change: "Cost data unavailable",
+    },
+  ];
+
   return (
     <section className="summary-card">
       <div>
-        <span>Today’s Summary</span>
-        <h2>Operations are looking healthy</h2>
+        <span>Dataset Summary</span>
+        <h2>Inventory operations overview</h2>
       </div>
-      {[
-        ["Sales", "$24,560", "+18.2%"],
-        ["Purchases", "$18,340", "+12.6%"],
-        ["New Products", "24", "+9.1%"],
-        ["Transactions", "156", "+14.3%"],
-        ["Avg. Order Value", "$157.44", "+6.8%"],
-        ["Gross Profit", "$8,920", "+15.7%"],
-      ].map(([label, value, change]) => (
-        <div className="summary-stat" key={label}>
-          <small>{label}</small>
-          <strong>{value}</strong>
+
+      {summaryStats.map((stat) => (
+        <div className="summary-stat" key={stat.label}>
+          <small>{stat.label}</small>
+
+          <strong>{stat.value}</strong>
+
           <span>
-            <ArrowUpRight size={12} />
-            {change}
+            {stat.change}
           </span>
         </div>
       ))}
+
       <div className="summary-visual">
         <Package size={58} />
       </div>
@@ -1870,17 +2526,17 @@ function AnalyticsPage() {
                     </Pie>
 
                     <Tooltip
-                      formatter={(value: number) =>
-                        `$${value.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
-                        })}`
-                      }
-                      contentStyle={{
-                        background: "#111a27",
-                        border: "1px solid #2a394e",
-                        borderRadius: 10,
-                      }}
-                    />
+  formatter={(value) =>
+    `$${Number(value ?? 0).toLocaleString(undefined, {
+      maximumFractionDigits: 0,
+    })}`
+  }
+  contentStyle={{
+    background: "#111a27",
+    border: "1px solid #2a394e",
+    borderRadius: 10,
+  }}
+/>
                   </PieChart>
                 </ResponsiveContainer>
               </div>
