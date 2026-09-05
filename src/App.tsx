@@ -436,14 +436,13 @@ function Topbar({
         <kbd>⌘ K</kbd>
       </div>
       <button className="date-button">
-        <CalendarDays size={15} />
-        May 24 - Jun 24, 2024
-      </button>
+  <CalendarDays size={15} />
+  Jan 1 - Dec 31, 2022
+</button>
       <div className="topbar-actions">
         <button className="icon-button notification">
-          <Bell size={18} />
-          <i>7</i>
-        </button>
+  <Bell size={18} />
+</button>
         <div className="top-user">
           <div className="avatar avatar-photo">AU</div>
           <div>
@@ -495,7 +494,7 @@ function Overview({
     <div className="page">
       <PageHeader
         title="Good morning, Admin. 👋"
-        subtitle="Here’s what’s happening with your inventory today."
+        subtitle="Here’s an overview of your inventory based on the public dataset."
         action={
           <div className="header-actions">
             <button
@@ -656,8 +655,6 @@ function KpiGrid({ totalProducts }: { totalProducts: number }) {
                 : "From public dataset"}
             </small>
           </div>
-
-          <MiniSparkline points={kpi.points} tone={kpi.tone} />
         </motion.div>
       ))}
     </div>
