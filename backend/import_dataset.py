@@ -3,6 +3,7 @@ import sqlite3
 from pathlib import Path
 from collections import defaultdict
 from math import ceil
+from datetime import datetime
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,7 +31,9 @@ def import_dataset():
 
         print(f"Dataset records found: {len(rows)}")
 
-        # Group records by Product ID + Category.
+        # ---------------------------------------------------------
+        # Group records by Product ID + Category
+        # ---------------------------------------------------------
         product_groups = defaultdict(list)
 
         for row in rows:
@@ -45,14 +48,18 @@ def import_dataset():
             f"{len(product_groups)}"
         )
 
-        # Remove existing test inventory data.
+        # ---------------------------------------------------------
+        # Clear previously imported inventory data
+        # ---------------------------------------------------------
         connection.execute("DELETE FROM stock_history")
         connection.execute("DELETE FROM transactions")
         connection.execute("DELETE FROM products")
         connection.execute("DELETE FROM categories")
         connection.execute("DELETE FROM suppliers")
 
-        # Create categories from the public dataset.
+        # ---------------------------------------------------------
+        # Create categories
+        # ---------------------------------------------------------
         categories = sorted(
             {
                 row["Category"].strip()
@@ -65,7 +72,10 @@ def import_dataset():
         for category in categories:
             cursor = connection.execute(
                 """
-                INSERT INTO categories (name, description)
+                INSERT INTO categories (
+                    name,
+                    description
+                )
                 VALUES (?, ?)
                 """,
                 (
@@ -73,31 +83,30 @@ def import_dataset():
                     "Category from Retail Store Inventory Forecasting Dataset"
                 )
             )
+
             category_ids[category] = cursor.lastrowid
 
         print(f"Categories imported: {len(categories)}")
 
-        # Create 100 products.
+        # ---------------------------------------------------------
+        # Create products
+        # ---------------------------------------------------------
         product_ids = {}
 
         for (product_code, category), group in sorted(
             product_groups.items()
         ):
+            # Find the latest dataset record for this product/category.
             latest_row = max(
                 group,
                 key=lambda row: row["Date"]
             )
 
+            # Calculate average price.
             prices = [
                 float(row["Price"])
                 for row in group
                 if row["Price"]
-            ]
-
-            forecasts = [
-                float(row["Demand Forecast"])
-                for row in group
-                if row["Demand Forecast"]
             ]
 
             average_price = (
@@ -106,16 +115,25 @@ def import_dataset():
                 else 0
             )
 
+            # Calculate average demand forecast.
+            forecasts = [
+                float(row["Demand Forecast"])
+                for row in group
+                if row["Demand Forecast"]
+            ]
+
             average_forecast = (
                 sum(forecasts) / len(forecasts)
                 if forecasts
                 else 10
             )
 
+            # Current stock comes from the latest dataset record.
             current_stock = int(
                 float(latest_row["Inventory Level"])
             )
 
+            # Reorder level is based on average demand forecast.
             reorder_level = max(
                 1,
                 ceil(average_forecast)
@@ -123,9 +141,9 @@ def import_dataset():
 
             sku = f"{product_code}-{category}"
 
-            product_name = (
-                f"{product_code} - {category}"
-            )
+            # The public dataset does not provide product names,
+            # so the displayed name is derived from Product ID + Category.
+            product_name = f"{product_code} - {category}"
 
             description = (
                 f"Public dataset product. "
@@ -159,11 +177,15 @@ def import_dataset():
                 )
             )
 
-            product_ids[(product_code, category)] = cursor.lastrowid
+            product_ids[
+                (product_code, category)
+            ] = cursor.lastrowid
 
         print(f"Products imported: {len(product_ids)}")
 
-        # Import daily records.
+        # ---------------------------------------------------------
+        # Import daily dataset records
+        # ---------------------------------------------------------
         transaction_count = 0
         stock_history_count = 0
 
@@ -175,7 +197,21 @@ def import_dataset():
 
             product_id = product_ids[product_key]
 
-            date = row["Date"].strip()
+            # -----------------------------------------------------
+            # Use the actual date from the public dataset.
+            # Validate it before storing it in SQLite.
+            # -----------------------------------------------------
+            raw_date = row["Date"].strip()
+
+            try:
+                dataset_date = datetime.strptime(
+                    raw_date,
+                    "%Y-%m-%d"
+                ).strftime("%Y-%m-%d")
+            except ValueError:
+                raise ValueError(
+                    f"Invalid dataset date: {raw_date}"
+                )
 
             units_sold = int(
                 float(row["Units Sold"])
@@ -200,7 +236,11 @@ def import_dataset():
                 f"Seasonality: {row['Seasonality']}"
             )
 
+            # -----------------------------------------------------
             # Create a sales transaction when units were sold.
+            # IMPORTANT:
+            # transaction_date = actual dataset Date
+            # -----------------------------------------------------
             if units_sold > 0:
                 cursor = connection.execute(
                     """
@@ -223,7 +263,7 @@ def import_dataset():
                         units_sold,
                         price,
                         total_amount,
-                        date,
+                        dataset_date,
                         notes
                     )
                 )
@@ -234,7 +274,10 @@ def import_dataset():
             else:
                 transaction_id = None
 
-            # Store the dataset's daily inventory level.
+            # -----------------------------------------------------
+            # Store daily inventory snapshot.
+            # timestamp = actual dataset Date
+            # -----------------------------------------------------
             connection.execute(
                 """
                 INSERT INTO stock_history (
@@ -253,12 +296,15 @@ def import_dataset():
                     "DAILY_SNAPSHOT",
                     0,
                     int(float(row["Inventory Level"])),
-                    date
+                    dataset_date
                 )
             )
 
             stock_history_count += 1
 
+        # ---------------------------------------------------------
+        # Save everything
+        # ---------------------------------------------------------
         connection.commit()
 
         print(f"Transactions imported: {transaction_count}")
@@ -275,3 +321,4 @@ def import_dataset():
 
 if __name__ == "__main__":
     import_dataset()
+    

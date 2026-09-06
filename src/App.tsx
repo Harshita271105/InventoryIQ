@@ -1694,9 +1694,9 @@ function Toolbar({
 function InventoryPage({
   products: filtered,
   totalUnits,
-inventoryValue,
-needsAttention,
-search,
+  inventoryValue,
+  needsAttention,
+  search,
   setSearch,
   statusFilter,
   setStatusFilter,
@@ -1724,29 +1724,30 @@ search,
         <div>
           <span>Total units</span>
           <strong>{totalUnits.toLocaleString()}</strong>
-          <small className="positive">↑ 8.4% this month</small>
+          <small className="positive">From public dataset</small>
         </div>
 
         <div>
           <span>Inventory value</span>
           <strong>
-  ${inventoryValue.toLocaleString(undefined, {
-    maximumFractionDigits: 0,
-  })}
-</strong>
-          <small className="positive">↑ 12.8% this month</small>
+            $
+            {inventoryValue.toLocaleString(undefined, {
+              maximumFractionDigits: 0,
+            })}
+          </strong>
+          <small className="positive">Calculated from current stock</small>
         </div>
 
         <div>
           <span>Needs attention</span>
           <strong>{needsAttention}</strong>
-          <small className="negative">↑ 5.2% this month</small>
+          <small className="negative">Based on current stock levels</small>
         </div>
 
         <div>
           <span>Avg. stock age</span>
           <strong>N/A</strong>
-          <small className="positive">↓ 4.1% this month</small>
+          <small>Not available in dataset</small>
         </div>
       </div>
 
