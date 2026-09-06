@@ -14,11 +14,14 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Path alias — depth-invariant imports for src (@/foo === src/foo from any file) */
+    /* Path alias */
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     },
+
+    /* Ignore TypeScript 6.0 deprecation warning */
+    "ignoreDeprecations": "6.0",
 
     /* Linting */
     "strict": true,

@@ -58,13 +58,7 @@ import {
 import { apiGet } from "./api";
 
 import {
-  activities,
-  categoryData,
-  heatmap,
   navItems,
-  products as mockProducts,
-  trendData,
-  transactions,
   type InventoryStatus,
   type Product,
   type TransactionType,
@@ -390,7 +384,6 @@ function Sidebar({
             >
               <Icon size={17} strokeWidth={1.8} />
               <span>{item.label}</span>
-              {item.badge && <b>{item.badge}</b>}
             </button>
           );
         })}
