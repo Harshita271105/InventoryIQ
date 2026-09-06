@@ -82,5 +82,13 @@ export const heatmap = [
 ];
 
 export const navItems = [
-  { label: 'Overview', icon: 'layout' }, { label: 'Inventory', icon: 'boxes' }, { label: 'Products', icon: 'package' }, { label: 'Transactions', icon: 'receipt' }, { label: 'Analytics', icon: 'chart' }, { label: 'Forecasting', icon: 'sparkles' }, { label: 'Alerts', icon: 'bell', badge: '7' }, { label: 'Suppliers', icon: 'truck' }, { label: 'Reports', icon: 'file' },
+  { label: "Overview", icon: "layout" },
+  { label: "Inventory", icon: "boxes" },
+  { label: "Products", icon: "package" },
+  { label: "Transactions", icon: "receipt" },
+  { label: "Analytics", icon: "chart" },
+  { label: "Forecasting", icon: "sparkles" },
+  { label: "Alerts", icon: "bell" },
+  { label: "Suppliers", icon: "truck" },
+  { label: "Reports", icon: "file" },
 ];
