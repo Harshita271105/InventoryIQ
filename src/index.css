@@ -24,6 +24,30 @@
   --purple-soft: #2c2244;
 }
 
+/* LIGHT THEME */
+.app-shell.light {
+  --bg: #f5f7fa;
+  --bg-elevated: #ffffff;
+  --card: #ffffff;
+  --card-2: #f8fafc;
+  --border: #dfe5ec;
+  --border-soft: #e9edf2;
+  --text: #172033;
+  --text-muted: #647084;
+  --text-dim: #8a95a6;
+
+  --green: #20a86b;
+  --green-soft: #e1f5ec;
+  --amber: #d88916;
+  --amber-soft: #fff1d8;
+  --red: #d94a52;
+  --red-soft: #fde7e9;
+  --blue: #3f70df;
+  --blue-soft: #e5edff;
+  --purple: #8756d9;
+  --purple-soft: #eee5ff;
+}
+
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 body { margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
@@ -448,4 +472,300 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
   .quick-menu { right: 16px; left: 16px; width: auto; }
   .form-grid { grid-template-columns: 1fr; }
   .alert-overview { grid-template-columns: 1fr; }
+}
+
+/* =========================================================
+   LIGHT THEME OVERRIDES
+   ========================================================= */
+
+.app-shell.light {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Main page background */
+.app-shell.light .main-content {
+  background: var(--bg);
+}
+
+/* Ambient background effects */
+.app-shell.light .ambient {
+  opacity: 0.08;
+}
+
+.app-shell.light .ambient-one {
+  background: #48d597;
+}
+
+.app-shell.light .ambient-two {
+  background: #5487fa;
+}
+
+/* Sidebar */
+.app-shell.light .sidebar {
+  background: #ffffff;
+  border-right: 1px solid var(--border);
+  color: var(--text);
+}
+
+.app-shell.light .brand strong {
+  color: var(--text);
+}
+
+.app-shell.light .brand small,
+.app-shell.light .sidebar-section-label {
+  color: var(--text-muted);
+}
+
+.app-shell.light .nav-item {
+  color: var(--text-muted);
+}
+
+.app-shell.light .nav-item:hover {
+  background: #f1f5f9;
+  color: var(--text);
+}
+
+.app-shell.light .nav-item.active {
+  background: #e7f7f1;
+  color: #159764;
+}
+
+.app-shell.light .nav-item b {
+  color: #159764;
+}
+
+/* Sidebar profile */
+.app-shell.light .profile-card {
+  background: #f7f9fc;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.app-shell.light .profile-card strong {
+  color: var(--text);
+}
+
+.app-shell.light .profile-card small {
+  color: var(--text-muted);
+}
+
+/* Theme switch */
+.app-shell.light .theme-switch {
+  background: #eef2f6;
+  border: 1px solid var(--border);
+}
+
+.app-shell.light .theme-switch button {
+  color: var(--text-muted);
+}
+
+.app-shell.light .theme-switch button:hover {
+  color: var(--text);
+}
+
+.app-shell.light .theme-switch .theme-active {
+  background: #ffffff;
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+}
+
+/* Topbar */
+.app-shell.light .topbar {
+  background: rgba(245, 247, 250, 0.92);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-shell.light .search-box {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.app-shell.light .search-box input {
+  color: var(--text);
+}
+
+.app-shell.light .search-box input::placeholder {
+  color: var(--text-muted);
+}
+
+.app-shell.light .date-button,
+.app-shell.light .icon-button {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.app-shell.light .date-button:hover,
+.app-shell.light .icon-button:hover {
+  color: var(--text);
+  background: #f8fafc;
+}
+
+/* Header/profile area */
+.app-shell.light .user-menu {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+/* General cards */
+.app-shell.light .card,
+.app-shell.light .kpi-card,
+.app-shell.light .product-card,
+.app-shell.light .inventory-summary,
+.app-shell.light .table-wrap {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+/* Card text */
+.app-shell.light .card h3,
+.app-shell.light .card strong,
+.app-shell.light .product-card h3,
+.app-shell.light .product-card strong,
+.app-shell.light .kpi-card strong {
+  color: var(--text);
+}
+
+.app-shell.light .card span,
+.app-shell.light .product-card p,
+.app-shell.light .kpi-card span {
+  color: var(--text-muted);
+}
+
+/* Page headings */
+.app-shell.light .page h1,
+.app-shell.light .page h2,
+.app-shell.light .page h3 {
+  color: var(--text);
+}
+
+.app-shell.light .page p {
+  color: var(--text-muted);
+}
+
+/* Buttons */
+.app-shell.light .secondary-button {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.app-shell.light .secondary-button:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.app-shell.light .primary-button {
+  color: #ffffff;
+}
+
+/* Inventory / product tables */
+.app-shell.light table {
+  color: var(--text);
+}
+
+.app-shell.light th {
+  color: var(--text-muted);
+  border-bottom-color: var(--border);
+}
+
+.app-shell.light td {
+  border-bottom-color: var(--border-soft);
+}
+
+.app-shell.light .table-muted {
+  color: var(--text-muted);
+}
+
+.app-shell.light .mono {
+  color: var(--text-muted);
+}
+
+/* Product thumbnails */
+.app-shell.light .product-thumb,
+.app-shell.light .large-thumb {
+  background: #edf7f3;
+  color: #20a86b;
+}
+
+/* Search / toolbar */
+.app-shell.light .toolbar,
+.app-shell.light .toolbar input,
+.app-shell.light .toolbar select {
+  color: var(--text);
+}
+
+.app-shell.light .toolbar input,
+.app-shell.light .toolbar select {
+  background: #ffffff;
+  border-color: var(--border);
+}
+
+/* Links */
+.app-shell.light .view-link,
+.app-shell.light .card-link {
+  color: #159764;
+}
+
+.app-shell.light .view-link:hover,
+.app-shell.light .card-link:hover {
+  color: #0f7d51;
+}
+
+/* Muted text */
+.app-shell.light .muted-count,
+.app-shell.light .text-muted,
+.app-shell.light .table-muted {
+  color: var(--text-muted);
+}
+
+/* Empty/loading states */
+.app-shell.light .empty-state {
+  color: var(--text-muted);
+}
+
+/* Modal */
+.app-shell.light .modal-overlay {
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.app-shell.light .modal {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+/* Dropdowns */
+.app-shell.light .dropdown,
+.app-shell.light .dropdown-menu {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+/* Status / small controls */
+.app-shell.light .status-badge {
+  border-color: transparent;
+}
+
+/* Charts */
+.app-shell.light .recharts-cartesian-axis-tick-value {
+  fill: #647084;
+}
+
+.app-shell.light .recharts-cartesian-grid line {
+  stroke: #e2e8f0;
+}
+
+/* Scrollbar */
+.app-shell.light::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+.app-shell.light::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

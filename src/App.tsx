@@ -140,16 +140,17 @@ const backendStatusMap: Record<BackendProduct["status"], InventoryStatus> = {
 
 function App() {
   const [activePage, setActivePage] = useState("Overview");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [quickActionOpen, setQuickActionOpen] = useState(false);
-  const [modal, setModal] = useState<ModalType>(null);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "All statuses" | InventoryStatus
-  >("All statuses");
-  const [toast, setToast] = useState("");
-  const [products, setProducts] = useState<Product[]>([]);
-  const [productsLoading, setProductsLoading] = useState(true);
+const [sidebarOpen, setSidebarOpen] = useState(false);
+const [theme, setTheme] = useState<"dark" | "light">("dark");
+const [quickActionOpen, setQuickActionOpen] = useState(false);
+const [modal, setModal] = useState<ModalType>(null);
+const [search, setSearch] = useState("");
+const [statusFilter, setStatusFilter] = useState<
+  "All statuses" | InventoryStatus
+>("All statuses");
+const [toast, setToast] = useState("");
+const [products, setProducts] = useState<Product[]>([]);
+const [productsLoading, setProductsLoading] = useState(true);
 
   useEffect(() => {
     async function loadProducts() {
@@ -171,22 +172,22 @@ function App() {
         );
 
         const mappedProducts: Product[] = backendProducts.map((product) => ({
-          id: String(product.id),
-          name: product.name,
-          sku: product.sku,
-          category:
-            categoryMap.get(product.category_id ?? -1) ??
-            `Category #${product.category_id ?? "N/A"}`,
-          stock: product.current_stock,
-          reserved: 0,
-          price: product.unit_price,
-          status: backendStatusMap[product.status],
-          supplier:
-            supplierMap.get(product.supplier_id ?? -1) ??
-            `Supplier #${product.supplier_id ?? "N/A"}`,
-          reorderLevel: product.reorder_level,
-          updated: "Just now",
-        }));
+  id: String(product.id),
+  name: product.name,
+  sku: product.sku,
+  category:
+    categoryMap.get(product.category_id ?? -1) ??
+    `Category #${product.category_id ?? "N/A"}`,
+  stock: product.current_stock,
+  reserved: 0,
+  price: product.unit_price,
+  status: backendStatusMap[product.status],
+  supplier:
+    supplierMap.get(product.supplier_id ?? -1) ??
+    `Supplier #${product.supplier_id ?? "N/A"}`,
+  reorderLevel: product.reorder_level,
+  updated: "Dataset",
+}));
 
         setProducts(mappedProducts);
       } catch (error) {
@@ -228,17 +229,19 @@ function App() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${theme}`}>
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
       <Sidebar
-        activePage={activePage}
-        open={sidebarOpen}
-        onNavigate={(page) => {
-          setActivePage(page);
-          setSidebarOpen(false);
-        }}
-      />
+  activePage={activePage}
+  open={sidebarOpen}
+  theme={theme}
+  onThemeChange={setTheme}
+  onNavigate={(page) => {
+    setActivePage(page);
+    setSidebarOpen(false);
+  }}
+/>
       <main className="main-content">
         <Topbar
           search={search}
@@ -340,10 +343,14 @@ function Sidebar({
   activePage,
   open,
   onNavigate,
+  theme,
+  onThemeChange,
 }: {
   activePage: string;
   open: boolean;
   onNavigate: (page: string) => void;
+  theme: "dark" | "light";
+  onThemeChange: (theme: "dark" | "light") => void;
 }) {
   return (
     <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
@@ -351,12 +358,14 @@ function Sidebar({
         <div className="brand-mark">
           <Boxes size={19} />
         </div>
+
         <div>
           <strong>
             Inventory<span>IQ</span>
           </strong>
           <small>Smart inventory platform</small>
         </div>
+
         <button
           className="sidebar-close"
           onClick={() => onNavigate(activePage)}
@@ -364,14 +373,19 @@ function Sidebar({
           <X size={17} />
         </button>
       </div>
+
       <div className="sidebar-section-label">Workspace</div>
+
       <nav>
         {navItems.map((item) => {
           const Icon = iconMap[item.icon as IconName];
+
           return (
             <button
               key={item.label}
-              className={`nav-item ${activePage === item.label ? "active" : ""}`}
+              className={`nav-item ${
+                activePage === item.label ? "active" : ""
+              }`}
               onClick={() => onNavigate(item.label)}
             >
               <Icon size={17} strokeWidth={1.8} />
@@ -381,29 +395,46 @@ function Sidebar({
           );
         })}
       </nav>
+
       <div className="sidebar-footer">
         <div className="sidebar-section-label">System</div>
+
         <button className="nav-item">
           <Settings size={17} />
           <span>Settings</span>
         </button>
+
         <button className="nav-item">
           <CircleHelp size={17} />
           <span>Help & Support</span>
         </button>
+
         <div className="profile-card">
           <div className="avatar avatar-photo">AU</div>
+
           <div>
             <strong>Admin User</strong>
             <small>Administrator</small>
           </div>
+
           <ChevronDown size={15} />
         </div>
+
         <div className="theme-switch">
-          <button className="theme-active">
-            <Zap size={14} /> Dark
+          <button
+            className={theme === "dark" ? "theme-active" : ""}
+            onClick={() => onThemeChange("dark")}
+          >
+            <Zap size={14} />
+            Dark
           </button>
-          <button>Light</button>
+
+          <button
+            className={theme === "light" ? "theme-active" : ""}
+            onClick={() => onThemeChange("light")}
+          >
+            Light
+          </button>
         </div>
       </div>
     </aside>
