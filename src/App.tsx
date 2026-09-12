@@ -215,7 +215,7 @@ const [productsLoading, setProductsLoading] = useState(true);
     window.setTimeout(() => setToast(""), 2600);
   };
 
-  const handleAction = (action: string) => {
+const handleAction = (action: string) => {
   setQuickActionOpen(false);
 
   if (action === "Add Product") {
@@ -225,6 +225,11 @@ const [productsLoading, setProductsLoading] = useState(true);
 
   if (action === "Record Transaction") {
     setModal("transaction");
+    return;
+  }
+
+  if (action === "Forecasting") {
+    setActivePage("Forecasting");
     return;
   }
 
@@ -260,10 +265,7 @@ const [productsLoading, setProductsLoading] = useState(true);
       product.supplier,
     ]);
 
-    const csvContent = [
-      headers,
-      ...rows,
-    ]
+    const csvContent = [headers, ...rows]
       .map((row) =>
         row
           .map((value) => `"${String(value).replace(/"/g, '""')}"`)
@@ -631,7 +633,7 @@ function Overview({
         <StatusCard />
         <CategoriesCard />
         <SmartAlerts />
-        <InsightCard />
+        <InsightCard onNavigate={onAction} />
       </div>
 
       <SummaryCard />
@@ -1529,7 +1531,11 @@ function SmartAlerts() {
     </Card>
   );
 }
-function InsightCard() {
+function InsightCard({
+  onNavigate,
+}: {
+  onNavigate: (page: string) => void;
+}) {
   type DatasetTransaction = {
     id: number;
     product_id: number;
@@ -1622,12 +1628,16 @@ function InsightCard() {
         face stockout risk within the next 7 days.
       </p>
 
-      <button className="purple-button">
+      <button
+        className="purple-button"
+        onClick={() => onNavigate("Forecasting")}
+      >
         View Predictions <ArrowRight size={14} />
       </button>
     </Card>
   );
 }
+
 function SummaryCard() {
   type DatasetTransaction = {
     id: number;
