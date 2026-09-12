@@ -311,11 +311,18 @@ const handleAction = (action: string) => {
 />
       <main className="main-content">
         <Topbar
-          search={search}
-          setSearch={setSearch}
-          onMenu={() => setSidebarOpen(true)}
-          onQuickAction={() => setQuickActionOpen((open) => !open)}
-        />
+  search={search}
+  setSearch={setSearch}
+  onMenu={() => setSidebarOpen(true)}
+  onQuickAction={() =>
+    setQuickActionOpen((open) => !open)
+  }
+  onNavigate={(page) => {
+    setActivePage(page);
+    setSidebarOpen(false);
+  }}
+  showToast={showToast}
+/>
         <AnimatePresence mode="wait">
           <motion.div
             key={activePage}
@@ -512,43 +519,110 @@ function Topbar({
   setSearch,
   onMenu,
   onQuickAction,
+  onNavigate,
+  showToast,
 }: {
   search: string;
   setSearch: (value: string) => void;
   onMenu: () => void;
   onQuickAction: () => void;
+  onNavigate: (page: string) => void;
+  showToast: (message: string) => void;
 }) {
+  const [profileOpen, setProfileOpen] = useState(false);
+
   return (
     <header className="topbar">
       <button className="mobile-menu" onClick={onMenu}>
         <Menu size={20} />
       </button>
+
       <div className="global-search">
         <Search size={17} />
+
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search products, SKU, transactions..."
         />
+
         <kbd>⌘ K</kbd>
       </div>
+
       <button className="date-button">
-  <CalendarDays size={15} />
-  Jan 1 - Dec 31, 2022
-</button>
+        <CalendarDays size={15} />
+        Jan 1 - Dec 31, 2022
+      </button>
+
       <div className="topbar-actions">
         <button className="icon-button notification">
-  <Bell size={18} />
-</button>
-        <div className="top-user">
-          <div className="avatar avatar-photo">AU</div>
-          <div>
-            <strong>Admin User</strong>
-            <small>Administrator</small>
-          </div>
-          <ChevronDown size={15} />
+          <Bell size={18} />
+        </button>
+
+        <div className="profile-wrapper">
+          <button
+            className="top-user"
+            onClick={() => setProfileOpen((open) => !open)}
+          >
+            <div className="avatar avatar-photo">AU</div>
+
+            <div>
+              <strong>Admin User</strong>
+              <small>Administrator</small>
+            </div>
+
+            <ChevronDown size={15} />
+          </button>
+
+          {profileOpen && (
+            <div className="profile-dropdown">
+              <div className="profile-dropdown-header">
+                <div className="avatar avatar-photo">AU</div>
+
+                <div>
+                  <strong>Admin User</strong>
+                  <small>Administrator</small>
+                </div>
+              </div>
+
+              <div className="profile-dropdown-divider" />
+
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  showToast("Admin profile is active.");
+                }}
+              >
+                <span>Profile</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  onNavigate("Settings");
+                }}
+              >
+                <span>Settings</span>
+              </button>
+
+              <div className="profile-dropdown-divider" />
+
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  showToast("Sign out is not configured.");
+                }}
+              >
+                <span>Sign out</span>
+              </button>
+            </div>
+          )}
         </div>
-        <button className="quick-action-button" onClick={onQuickAction}>
+
+        <button
+          className="quick-action-button"
+          onClick={onQuickAction}
+        >
           <Plus size={16} />
           Quick Action
         </button>
