@@ -216,11 +216,82 @@ const [productsLoading, setProductsLoading] = useState(true);
   };
 
   const handleAction = (action: string) => {
-    setQuickActionOpen(false);
-    if (action === "Add Product") setModal("product");
-    else if (action === "Record Transaction") setModal("transaction");
-    else showToast(`${action} is ready to connect to your Python backend.`);
-  };
+  setQuickActionOpen(false);
+
+  if (action === "Add Product") {
+    setModal("product");
+    return;
+  }
+
+  if (action === "Record Transaction") {
+    setModal("transaction");
+    return;
+  }
+
+  if (action === "Export CSV") {
+    if (products.length === 0) {
+      showToast("No inventory data is available to export.");
+      return;
+    }
+
+    const headers = [
+      "Product ID",
+      "Product Name",
+      "SKU",
+      "Category",
+      "Current Stock",
+      "Unit Price",
+      "Inventory Value",
+      "Reorder Level",
+      "Status",
+      "Supplier",
+    ];
+
+    const rows = products.map((product) => [
+      product.id,
+      product.name,
+      product.sku,
+      product.category,
+      product.stock,
+      product.price.toFixed(2),
+      (product.stock * product.price).toFixed(2),
+      product.reorderLevel,
+      product.status,
+      product.supplier,
+    ]);
+
+    const csvContent = [
+      headers,
+      ...rows,
+    ]
+      .map((row) =>
+        row
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "InventoryIQ_Inventory.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+
+    showToast("Inventory CSV downloaded.");
+    return;
+  }
+
+  showToast(`${action} is ready to connect to your Python backend.`);
+};
 
   return (
     <div className={`app-shell ${theme}`}>
@@ -539,10 +610,10 @@ function Overview({
 
             <button
               className="secondary-button"
-              onClick={() => onAction("Import CSV")}
+              onClick={() => onAction("Export CSV")}
             >
               <Download size={16} />
-              Import CSV
+              Export CSV
             </button>
           </div>
         }
@@ -3853,7 +3924,7 @@ function QuickActionMenu({ onAction }: { onAction: (action: string) => void }) {
         ["Record Sale", ArrowUpRight],
         ["Record Purchase", Truck],
         ["Adjust Stock", Boxes],
-        ["Import CSV", Download],
+        ["Export CSV", Download],
       ].map(([label, Icon]) => (
         <button key={label as string} onClick={() => onAction(label as string)}>
           <span>
