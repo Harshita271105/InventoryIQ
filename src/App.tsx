@@ -137,6 +137,7 @@ function App() {
 const [sidebarOpen, setSidebarOpen] = useState(false);
 const [theme, setTheme] = useState<"dark" | "light">("dark");
 const [quickActionOpen, setQuickActionOpen] = useState(false);
+const [selectedDate, setSelectedDate] = useState("");
 const [modal, setModal] = useState<ModalType>(null);
 const [search, setSearch] = useState("");
 const [statusFilter, setStatusFilter] = useState<
@@ -228,8 +229,19 @@ const handleAction = (action: string) => {
     return;
   }
 
-  if (action === "Forecasting") {
-    setActivePage("Forecasting");
+  if (
+    action === "Forecasting" ||
+    action === "Transactions" ||
+    action === "Inventory" ||
+    action === "Products" ||
+    action === "Analytics" ||
+    action === "Alerts" ||
+    action === "Suppliers" ||
+    action === "Reports" ||
+    action === "Settings"
+  ) {
+    setActivePage(action);
+    setSidebarOpen(false);
     return;
   }
 
@@ -268,7 +280,9 @@ const handleAction = (action: string) => {
     const csvContent = [headers, ...rows]
       .map((row) =>
         row
-          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .map((value) =>
+            `"${String(value).replace(/"/g, '""')}"`
+          )
           .join(","),
       )
       .join("\n");
@@ -317,11 +331,6 @@ const handleAction = (action: string) => {
   onQuickAction={() =>
     setQuickActionOpen((open) => !open)
   }
-  onNavigate={(page) => {
-    setActivePage(page);
-    setSidebarOpen(false);
-  }}
-  showToast={showToast}
 />
         <AnimatePresence mode="wait">
           <motion.div
@@ -519,18 +528,12 @@ function Topbar({
   setSearch,
   onMenu,
   onQuickAction,
-  onNavigate,
-  showToast,
 }: {
   search: string;
   setSearch: (value: string) => void;
   onMenu: () => void;
   onQuickAction: () => void;
-  onNavigate: (page: string) => void;
-  showToast: (message: string) => void;
 }) {
-  const [profileOpen, setProfileOpen] = useState(false);
-
   return (
     <header className="topbar">
       <button className="mobile-menu" onClick={onMenu}>
@@ -539,19 +542,17 @@ function Topbar({
 
       <div className="global-search">
         <Search size={17} />
-
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search products, SKU, transactions..."
         />
-
         <kbd>⌘ K</kbd>
       </div>
 
       <button className="date-button">
         <CalendarDays size={15} />
-        Jan 1 - Dec 31, 2022
+        Jan 1, 2022 - Jan 1, 2024
       </button>
 
       <div className="topbar-actions">
@@ -559,64 +560,13 @@ function Topbar({
           <Bell size={18} />
         </button>
 
-        <div className="profile-wrapper">
-          <button
-            className="top-user"
-            onClick={() => setProfileOpen((open) => !open)}
-          >
-            <div className="avatar avatar-photo">AU</div>
-
-            <div>
-              <strong>Admin User</strong>
-              <small>Administrator</small>
-            </div>
-
-            <ChevronDown size={15} />
-          </button>
-
-          {profileOpen && (
-            <div className="profile-dropdown">
-              <div className="profile-dropdown-header">
-                <div className="avatar avatar-photo">AU</div>
-
-                <div>
-                  <strong>Admin User</strong>
-                  <small>Administrator</small>
-                </div>
-              </div>
-
-              <div className="profile-dropdown-divider" />
-
-              <button
-                onClick={() => {
-                  setProfileOpen(false);
-                  showToast("Admin profile is active.");
-                }}
-              >
-                <span>Profile</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setProfileOpen(false);
-                  onNavigate("Settings");
-                }}
-              >
-                <span>Settings</span>
-              </button>
-
-              <div className="profile-dropdown-divider" />
-
-              <button
-                onClick={() => {
-                  setProfileOpen(false);
-                  showToast("Sign out is not configured.");
-                }}
-              >
-                <span>Sign out</span>
-              </button>
-            </div>
-          )}
+        <div className="top-user">
+          <div className="avatar avatar-photo">AU</div>
+          <div>
+            <strong>Admin User</strong>
+            <small>Administrator</small>
+          </div>
+          <ChevronDown size={15} />
         </div>
 
         <button
@@ -700,7 +650,7 @@ function Overview({
       <div className="dashboard-grid top-grid">
         <HealthCard />
         <TrendCard />
-        <ActivityCard />
+        <ActivityCard onNavigate={onAction} />
       </div>
 
       <div className="dashboard-grid bottom-grid">
@@ -1163,7 +1113,11 @@ function TrendCard() {
     </Card>
   );
 }
-function ActivityCard() {
+function ActivityCard({
+  onNavigate,
+}: {
+  onNavigate: (page: string) => void;
+}) {
   type DatasetTransaction = {
     id: number;
     product_id: number;
@@ -1197,7 +1151,18 @@ function ActivityCard() {
     products.map((product) => [product.id, product]),
   );
 
-  const recentTransactions = transactions.slice(0, 5);
+  const recentTransactions = [...transactions]
+    .sort((a, b) => {
+      const dateA = new Date(a.transaction_date).getTime();
+      const dateB = new Date(b.transaction_date).getTime();
+
+      if (dateB !== dateA) {
+        return dateB - dateA;
+      }
+
+      return b.id - a.id;
+    })
+    .slice(0, 5);
 
   const formatDate = (dateValue: string) => {
     const dateMatch = String(dateValue).match(
@@ -1211,6 +1176,7 @@ function ActivityCard() {
     ).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
+      year: "numeric",
     });
   };
 
@@ -1250,7 +1216,8 @@ function ActivityCard() {
                   </strong>
 
                   <span>
-                    {product?.name || `Product #${transaction.product_id}`}
+                    {product?.name ||
+                      `Product #${transaction.product_id}`}
                   </span>
                 </div>
 
@@ -1274,9 +1241,12 @@ function ActivityCard() {
         )}
       </div>
 
-      <button className="view-link">
-        View all activity <ArrowRight size={14} />
-      </button>
+      <button
+  className="view-link"
+  onClick={() => onNavigate("Transactions")}
+>
+  View all activity <ArrowRight size={14} />
+</button>
     </Card>
   );
 }
