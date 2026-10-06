@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
+
 from models.product import Product
 from services.product_service import ProductService
+
 
 product_bp = Blueprint(
     "products",
@@ -9,6 +11,9 @@ product_bp = Blueprint(
 )
 
 
+# ---------------------------------------------------------
+# GET ALL PRODUCTS
+# ---------------------------------------------------------
 @product_bp.route("", methods=["GET"])
 def get_products():
     search = request.args.get("search")
@@ -31,6 +36,9 @@ def get_products():
     ])
 
 
+# ---------------------------------------------------------
+# GET SINGLE PRODUCT
+# ---------------------------------------------------------
 @product_bp.route("/<int:product_id>", methods=["GET"])
 def get_product(product_id):
     products = ProductService.get_all_products()
@@ -44,9 +52,17 @@ def get_product(product_id):
     }), 404
 
 
+# ---------------------------------------------------------
+# CREATE PRODUCT
+# ---------------------------------------------------------
 @product_bp.route("", methods=["POST"])
 def create_product():
-    data = request.get_json()
+    data = request.get_json(silent=True)
+
+    if not data:
+        return jsonify({
+            "error": "Request body is required"
+        }), 400
 
     required_fields = [
         "name",
@@ -55,64 +71,102 @@ def create_product():
     ]
 
     for field in required_fields:
-        if field not in data:
+        if field not in data or data[field] in ("", None):
             return jsonify({
                 "error": f"{field} is required"
             }), 400
 
-    product = Product(
-        name=data["name"],
-        sku=data["sku"],
-        category_id=data.get("category_id"),
-        supplier_id=data.get("supplier_id"),
-        unit_price=data["unit_price"],
-        current_stock=data.get("current_stock", 0),
-        reorder_level=data.get("reorder_level", 10),
-        description=data.get("description")
-    )
-
     try:
+        product = Product(
+            name=data["name"],
+            sku=data["sku"],
+            category_id=data.get("category_id"),
+            supplier_id=data.get("supplier_id"),
+            unit_price=float(data["unit_price"]),
+            current_stock=int(data.get("current_stock", 0)),
+            reorder_level=int(data.get("reorder_level", 10)),
+            description=data.get("description")
+        )
+
         created_product = ProductService.create_product(product)
 
         return jsonify(
             created_product.to_dict()
         ), 201
 
+    except ValueError:
+        return jsonify({
+            "error": "Unit price, current stock, and reorder level must contain valid numbers"
+        }), 400
+
     except Exception as error:
         return jsonify({
             "error": str(error)
         }), 400
 
 
+# ---------------------------------------------------------
+# UPDATE PRODUCT
+# ---------------------------------------------------------
 @product_bp.route("/<int:product_id>", methods=["PUT"])
 def update_product(product_id):
-    data = request.get_json()
+    data = request.get_json(silent=True)
 
-    product = Product(
-        name=data["name"],
-        sku=data["sku"],
-        category_id=data.get("category_id"),
-        supplier_id=data.get("supplier_id"),
-        unit_price=data["unit_price"],
-        current_stock=data.get("current_stock", 0),
-        reorder_level=data.get("reorder_level", 10),
-        description=data.get("description"),
-        product_id=product_id
-    )
+    if not data:
+        return jsonify({
+            "error": "Request body is required"
+        }), 400
+
+    required_fields = [
+        "name",
+        "sku",
+        "unit_price"
+    ]
+
+    for field in required_fields:
+        if field not in data or data[field] in ("", None):
+            return jsonify({
+                "error": f"{field} is required"
+            }), 400
 
     try:
+        product = Product(
+            name=data["name"],
+            sku=data["sku"],
+            category_id=data.get("category_id"),
+            supplier_id=data.get("supplier_id"),
+            unit_price=float(data["unit_price"]),
+            current_stock=int(data.get("current_stock", 0)),
+            reorder_level=int(data.get("reorder_level", 10)),
+            description=data.get("description"),
+            product_id=product_id
+        )
+
         updated_product = ProductService.update_product(product)
+
+        if not updated_product:
+            return jsonify({
+                "error": "Product not found"
+            }), 404
 
         return jsonify(
             updated_product.to_dict()
         )
 
+    except ValueError:
+        return jsonify({
+            "error": "Unit price, current stock, and reorder level must contain valid numbers"
+        }), 400
+
     except Exception as error:
         return jsonify({
             "error": str(error)
         }), 400
 
 
+# ---------------------------------------------------------
+# DELETE PRODUCT
+# ---------------------------------------------------------
 @product_bp.route("/<int:product_id>", methods=["DELETE"])
 def delete_product(product_id):
     try:

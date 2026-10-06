@@ -998,3 +998,64 @@ select option {
   color: var(--text);
   background: var(--card);
 }
+
+/* ---------------------------------------------------------
+   PRODUCTS PAGINATION
+--------------------------------------------------------- */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding: 14px 4px 4px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.pagination-info {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pagination-button,
+.pagination-number {
+  height: 32px;
+  min-width: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-number {
+  padding: 0;
+}
+
+.pagination-button:hover:not(:disabled),
+.pagination-number:hover {
+  background: rgba(72, 213, 151, 0.08);
+  border-color: rgba(72, 213, 151, 0.35);
+}
+
+.pagination-number.active {
+  background: var(--green);
+  border-color: var(--green);
+  color: #07130f;
+  font-weight: 700;
+}
+
+.pagination-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

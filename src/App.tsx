@@ -55,7 +55,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { apiGet } from "./api";
+import { apiGet, apiPost } from "./api";
 
 import {
   navItems,
@@ -134,66 +134,72 @@ const backendStatusMap: Record<BackendProduct["status"], InventoryStatus> = {
 
 function App() {
   const [activePage, setActivePage] = useState("Overview");
-const [sidebarOpen, setSidebarOpen] = useState(false);
-const [theme, setTheme] = useState<"dark" | "light">("dark");
-const [quickActionOpen, setQuickActionOpen] = useState(false);
-const [selectedDate, setSelectedDate] = useState("");
-const [modal, setModal] = useState<ModalType>(null);
-const [search, setSearch] = useState("");
-const [statusFilter, setStatusFilter] = useState<
-  "All statuses" | InventoryStatus
->("All statuses");
-const [toast, setToast] = useState("");
-const [products, setProducts] = useState<Product[]>([]);
-const [productsLoading, setProductsLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [quickActionOpen, setQuickActionOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [modal, setModal] = useState<ModalType>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "All statuses" | InventoryStatus
+  >("All statuses");
+  const [toast, setToast] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadProducts() {
-      try {
-        setProductsLoading(true);
+  const loadProducts = async () => {
+    try {
+      setProductsLoading(true);
 
-        const [backendProducts, categories, suppliers] = await Promise.all([
+      const [backendProducts, categories, suppliers] =
+        await Promise.all([
           apiGet<BackendProduct[]>("/products"),
           apiGet<BackendCategory[]>("/categories"),
           apiGet<BackendSupplier[]>("/suppliers"),
         ]);
 
-        const categoryMap = new Map(
-          categories.map((category) => [category.id, category.name]),
-        );
+      const categoryMap = new Map(
+        categories.map((category) => [
+          category.id,
+          category.name,
+        ]),
+      );
 
-        const supplierMap = new Map(
-          suppliers.map((supplier) => [supplier.id, supplier.name]),
-        );
+      const supplierMap = new Map(
+        suppliers.map((supplier) => [
+          supplier.id,
+          supplier.name,
+        ]),
+      );
 
-        const mappedProducts: Product[] = backendProducts.map((product) => ({
-  id: String(product.id),
-  name: product.name,
-  sku: product.sku,
-  category:
-    categoryMap.get(product.category_id ?? -1) ??
-    `Category #${product.category_id ?? "N/A"}`,
-  stock: product.current_stock,
-  reserved: 0,
-  price: product.unit_price,
-  status: backendStatusMap[product.status],
-  supplier:
-    supplierMap.get(product.supplier_id ?? -1) ??
-    `Supplier #${product.supplier_id ?? "N/A"}`,
-  reorderLevel: product.reorder_level,
-  updated: "Dataset",
-}));
+      const mappedProducts: Product[] =
+        backendProducts.map((product) => ({
+          id: String(product.id),
+          name: product.name,
+          sku: product.sku,
+          category:
+            categoryMap.get(product.category_id ?? -1) ??
+            `Category #${product.category_id ?? "N/A"}`,
+          stock: product.current_stock,
+          reserved: 0,
+          price: product.unit_price,
+          status: backendStatusMap[product.status],
+          supplier:
+            supplierMap.get(product.supplier_id ?? -1) ??
+            `Supplier #${product.supplier_id ?? "N/A"}`,
+          reorderLevel: product.reorder_level,
+          updated: "Dataset",
+        }));
 
-        setProducts(mappedProducts);
-      } catch (error) {
-        console.error("Failed to load products:", error);
-        setProducts([]);
-        setToast("Could not load products from the Python backend.");
-      } finally {
-        setProductsLoading(false);
-      }
+      setProducts(mappedProducts);
+    } catch (error) {
+      console.error("Failed to load products:", error);
+    } finally {
+      setProductsLoading(false);
     }
+  };
 
+  useEffect(() => {
     loadProducts();
   }, []);
 
@@ -2182,6 +2188,29 @@ function ProductsPage({
   products: Product[];
   onAction: (action: string) => void;
 }) {
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 20;
+  const totalPages = Math.ceil(rows.length / itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rows.length]);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+
+  const visibleRows = rows.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(
+      Math.max(1, Math.min(page, totalPages))
+    );
+  };
+
+  const startItem = rows.length === 0 ? 0 : startIndex + 1;
+  const endItem = Math.min(endIndex, rows.length);
+
   return (
     <div className="page">
       <PageHeader
@@ -2198,8 +2227,9 @@ function ProductsPage({
           </button>
         }
       />
+
       <div className="product-grid">
-        {rows.map((product) => (
+        {visibleRows.map((product) => (
           <motion.div
             className="product-card"
             key={product.id}
@@ -2209,38 +2239,91 @@ function ProductsPage({
               <div className="large-thumb">
                 <Package size={29} />
               </div>
+
               <button className="more-button">
                 <MoreHorizontal size={17} />
               </button>
             </div>
-            <span className={`status-badge ${statusClasses[product.status]}`}>
+
+            <span
+              className={`status-badge ${statusClasses[product.status]}`}
+            >
               <i />
               {product.status}
             </span>
+
             <h3>{product.name}</h3>
+
             <p>
               {product.sku} · {product.category}
             </p>
+
             <div className="product-card-meta">
               <div>
                 <small>Current stock</small>
                 <strong>{product.stock}</strong>
               </div>
+
               <div>
                 <small>Unit price</small>
-                <strong>${product.price.toFixed(2)}</strong>
+                <strong>
+                  ${product.price.toFixed(2)}
+                </strong>
               </div>
+
               <div>
                 <small>Supplier</small>
                 <strong>{product.supplier}</strong>
               </div>
             </div>
+
             <button className="card-link">
               View product <ArrowRight size={14} />
             </button>
           </motion.div>
         ))}
       </div>
+
+      {rows.length > 0 && (
+        <div className="pagination">
+          <span className="pagination-info">
+            Showing {startItem}–{endItem} of {rows.length}
+          </span>
+
+          <div className="pagination-controls">
+            <button
+              className="pagination-button"
+              disabled={currentPage === 1}
+              onClick={() => goToPage(currentPage - 1)}
+            >
+              Previous
+            </button>
+
+            {Array.from(
+              { length: totalPages },
+              (_, index) => index + 1
+            ).map((page) => (
+              <button
+                key={page}
+                className={`pagination-number ${
+                  currentPage === page ? "active" : ""
+                }`}
+                onClick={() => goToPage(page)}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button
+              className="pagination-button"
+              disabled={currentPage === totalPages}
+              onClick={() => goToPage(currentPage + 1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -4145,6 +4228,100 @@ function Modal({
   onSave: () => void;
 }) {
   const isProduct = type === "product";
+
+  const [name, setName] = useState("");
+  const [sku, setSku] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [supplierId, setSupplierId] = useState("");
+  const [unitPrice, setUnitPrice] = useState("");
+  const [currentStock, setCurrentStock] = useState("0");
+  const [reorderLevel, setReorderLevel] = useState("10");
+  const [description, setDescription] = useState("");
+
+  const [categories, setCategories] = useState<BackendCategory[]>([]);
+  const [suppliers, setSuppliers] = useState<BackendSupplier[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isProduct) return;
+
+    Promise.all([
+      apiGet<BackendCategory[]>("/categories"),
+      apiGet<BackendSupplier[]>("/suppliers"),
+    ])
+      .then(([categoryData, supplierData]) => {
+        setCategories(categoryData);
+        setSuppliers(supplierData);
+      })
+      .catch((err) => {
+        console.error("Failed to load product form data:", err);
+        setError("Unable to load categories and suppliers.");
+      });
+  }, [isProduct]);
+
+  const handleProductSave = async () => {
+    setError("");
+
+    if (!name.trim()) {
+      setError("Product name is required.");
+      return;
+    }
+
+    if (!sku.trim()) {
+      setError("SKU is required.");
+      return;
+    }
+
+    if (!categoryId) {
+      setError("Please select a category.");
+      return;
+    }
+
+    if (!unitPrice || Number(unitPrice) < 0) {
+      setError("Please enter a valid unit price.");
+      return;
+    }
+
+    if (!currentStock || Number(currentStock) < 0) {
+      setError("Please enter a valid current stock.");
+      return;
+    }
+
+    if (!reorderLevel || Number(reorderLevel) < 0) {
+      setError("Please enter a valid reorder level.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      await apiPost("/products", {
+        name: name.trim(),
+        sku: sku.trim(),
+        category_id: Number(categoryId),
+        supplier_id: supplierId ? Number(supplierId) : null,
+        unit_price: Number(unitPrice),
+        current_stock: Number(currentStock),
+        reorder_level: Number(reorderLevel),
+        description: description.trim() || null,
+      });
+
+      onSave();
+      onClose();
+    } catch (err) {
+      console.error("Failed to create product:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to add product. Please try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
       <motion.div
@@ -4159,66 +4336,195 @@ function Modal({
             <div className="eyebrow">New record</div>
             <h2>{isProduct ? "Add product" : "Record transaction"}</h2>
           </div>
+
           <button className="more-button" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
-        <div className="form-grid">
-          {(isProduct
-            ? [
-                ["Product name", "Wireless Mouse"],
-                ["SKU", "SKU-1050"],
-                ["Category", "Electronics"],
-                ["Supplier", "TechSource Inc."],
-                ["Unit price", "24.99"],
-                ["Current stock", "50"],
-                ["Reorder level", "25"],
-              ]
-            : [
-                ["Product", "Wireless Mouse"],
-                ["Transaction type", "Sale"],
-                ["Quantity", "12"],
-                ["Unit price", "24.99"],
-                ["Date", "Jun 24, 2024"],
-              ]
-          ).map(([label, placeholder], index) => (
-            <label
-              key={label}
-              className={isProduct && index === 0 ? "full-field" : ""}
-            >
-              <span>{label}</span>
-              {label === "Category" ||
-              label === "Supplier" ||
-              label === "Transaction type" ||
-              label === "Product" ? (
+
+        {isProduct ? (
+          <>
+            <div className="form-grid">
+              <label className="full-field">
+                <span>Product name</span>
+                <input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Enter product name"
+                />
+              </label>
+
+              <label>
+                <span>SKU</span>
+                <input
+                  value={sku}
+                  onChange={(event) => setSku(event.target.value)}
+                  placeholder="Enter SKU"
+                />
+              </label>
+
+              <label>
+                <span>Category</span>
+                <select
+                  value={categoryId}
+                  onChange={(event) => setCategoryId(event.target.value)}
+                >
+                  <option value="">Select category</option>
+
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>Supplier</span>
+                <select
+                  value={supplierId}
+                  onChange={(event) => setSupplierId(event.target.value)}
+                >
+                  <option value="">No supplier</option>
+
+                  {suppliers.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>Unit price</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={unitPrice}
+                  onChange={(event) => setUnitPrice(event.target.value)}
+                  placeholder="0.00"
+                />
+              </label>
+
+              <label>
+                <span>Current stock</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={currentStock}
+                  onChange={(event) => setCurrentStock(event.target.value)}
+                  placeholder="0"
+                />
+              </label>
+
+              <label>
+                <span>Reorder level</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={reorderLevel}
+                  onChange={(event) => setReorderLevel(event.target.value)}
+                  placeholder="10"
+                />
+              </label>
+
+              <label className="full-field">
+                <span>Description</span>
+                <textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="Add a short description..."
+                  rows={3}
+                />
+              </label>
+            </div>
+
+            {error && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "rgba(238, 91, 98, 0.1)",
+                  border: "1px solid rgba(238, 91, 98, 0.25)",
+                  color: "var(--red)",
+                  fontSize: 12,
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            <div className="modal-footer">
+              <button
+                className="filter-button"
+                onClick={onClose}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="primary-button"
+                onClick={handleProductSave}
+                disabled={saving}
+              >
+                {saving ? "Adding..." : "Add product"}
+                {!saving && <ArrowRight size={14} />}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="form-grid">
+              <label>
+                <span>Product</span>
                 <select defaultValue="">
                   <option value="" disabled>
-                    {placeholder}
+                    Select product
                   </option>
-                  <option>{placeholder}</option>
-                  <option>Other</option>
+                  <option>Product</option>
                 </select>
-              ) : (
-                <input placeholder={placeholder} />
-              )}
-            </label>
-          ))}
-          {isProduct && (
-            <label className="full-field">
-              <span>Description</span>
-              <textarea placeholder="Add a short description..." rows={3} />
-            </label>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button className="filter-button" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="primary-button" onClick={onSave}>
-            {isProduct ? "Add product" : "Record transaction"}{" "}
-            <ArrowRight size={14} />
-          </button>
-        </div>
+              </label>
+
+              <label>
+                <span>Transaction type</span>
+                <select defaultValue="Sale">
+                  <option>Sale</option>
+                  <option>Purchase</option>
+                  <option>Adjustment</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Quantity</span>
+                <input type="number" placeholder="Quantity" />
+              </label>
+
+              <label>
+                <span>Unit price</span>
+                <input type="number" placeholder="0.00" />
+              </label>
+
+              <label>
+                <span>Date</span>
+                <input type="date" />
+              </label>
+            </div>
+
+            <div className="modal-footer">
+              <button className="filter-button" onClick={onClose}>
+                Cancel
+              </button>
+
+              <button className="primary-button" onClick={onSave}>
+                Record transaction
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </>
+        )}
       </motion.div>
     </div>
   );
