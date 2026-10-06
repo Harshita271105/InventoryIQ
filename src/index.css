@@ -1054,7 +1054,7 @@ select option {
   color: #07130f;
   font-weight: 700;
 }
-
+ 
 .pagination-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
