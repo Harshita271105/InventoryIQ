@@ -483,13 +483,83 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
 .report-note button { margin-left: auto; }
 
 /* QUICK ACTION */
-.quick-menu { position: fixed; top: 76px; right: 32px; width: 280px; background: rgba(16, 26, 38, 0.96); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 14px; padding: 8px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); z-index: 50; }
-.quick-menu-title { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; }
-.quick-menu-title kbd { font-size: 10px; background: rgba(255, 255, 255, 0.05); padding: 2px 6px; border-radius: 5px; }
-.quick-menu button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 10px; background: none; border: none; color: var(--text); font-size: 13px; cursor: pointer; text-align: left; }
-.quick-menu button:hover { background: rgba(255, 255, 255, 0.04); }
-.quick-menu button span { width: 30px; height: 30px; border-radius: 8px; background: rgba(72, 213, 151, 0.1); color: var(--green); display: flex; align-items: center; justify-content: center; }
-.quick-menu button svg:last-child { margin-left: auto; color: var(--text-dim); }
+.quick-menu {
+  position: fixed;
+  top: 76px;
+  right: 32px;
+  width: 280px;
+  background: rgba(16, 26, 38, 0.96);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 8px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+}
+
+.quick-menu-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.quick-menu-title kbd {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+
+.quick-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  min-height: 50px;
+  border-radius: 10px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.quick-menu button:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.quick-menu button span {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 8px;
+  background: rgba(72, 213, 151, 0.1);
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.quick-menu button span svg {
+  margin-left: 0;
+  color: inherit;
+  display: block;
+}
+
+.quick-menu button > svg:last-child {
+  margin-left: auto;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
 
 /* MODAL */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(5, 10, 16, 0.7); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
