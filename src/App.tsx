@@ -1802,6 +1802,21 @@ function Toolbar({
   setStatusFilter: (value: "All statuses" | InventoryStatus) => void;
   onAction: (action: string) => void;
 }) {
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("All statuses");
+    setMoreFiltersOpen(false);
+  };
+
+  const applyStatusFilter = (
+    value: "All statuses" | InventoryStatus,
+  ) => {
+    setStatusFilter(value);
+    setMoreFiltersOpen(false);
+  };
+
   return (
     <div className="toolbar">
       <div className="table-search">
@@ -1812,6 +1827,7 @@ function Toolbar({
           placeholder="Search inventory..."
         />
       </div>
+
       <select
         value={statusFilter}
         onChange={(event) =>
@@ -1826,10 +1842,88 @@ function Toolbar({
         <option>Critical</option>
         <option>Out of Stock</option>
       </select>
-      <button className="filter-button">
-        <Filter size={15} />
-        More filters
-      </button>
+
+      <div className="more-filters-wrapper">
+        <button
+          className="filter-button"
+          onClick={() => setMoreFiltersOpen((open) => !open)}
+        >
+          <Filter size={15} />
+          More filters
+          <ChevronDown
+            size={14}
+            style={{
+              transform: moreFiltersOpen
+                ? "rotate(180deg)"
+                : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }}
+          />
+        </button>
+
+        {moreFiltersOpen && (
+          <div className="more-filters-menu">
+            <div className="more-filters-title">
+              Filter inventory
+            </div>
+
+            <button
+              onClick={() =>
+                applyStatusFilter("All statuses")
+              }
+            >
+              <span>All products</span>
+              {statusFilter === "All statuses" && <Check size={14} />}
+            </button>
+
+            <button
+              onClick={() =>
+                applyStatusFilter("Healthy")
+              }
+            >
+              <span>Healthy stock</span>
+              {statusFilter === "Healthy" && <Check size={14} />}
+            </button>
+
+            <button
+              onClick={() =>
+                applyStatusFilter("Low Stock")
+              }
+            >
+              <span>Low stock</span>
+              {statusFilter === "Low Stock" && <Check size={14} />}
+            </button>
+
+            <button
+              onClick={() =>
+                applyStatusFilter("Critical")
+              }
+            >
+              <span>Critical stock</span>
+              {statusFilter === "Critical" && <Check size={14} />}
+            </button>
+
+            <button
+              onClick={() =>
+                applyStatusFilter("Out of Stock")
+              }
+            >
+              <span>Out of stock</span>
+              {statusFilter === "Out of Stock" && <Check size={14} />}
+            </button>
+
+            <div className="more-filters-divider" />
+
+            <button
+              className="clear-filter-option"
+              onClick={clearFilters}
+            >
+              <span>Clear all filters</span>
+            </button>
+          </div>
+        )}
+      </div>
+
       <button
         className="primary-button"
         onClick={() => onAction("Add Product")}
@@ -1840,6 +1934,7 @@ function Toolbar({
     </div>
   );
 }
+
 function InventoryPage({
   products: filtered,
   totalUnits,
@@ -1922,6 +2017,25 @@ function InventoryPage({
   );
 }
 function InventoryTable({ products: rows }: { products: Product[] }) {
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 30;
+
+  const totalPages = Math.ceil(rows.length / itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rows.length]);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+
+  const visibleRows = rows.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
   return (
     <div className="table-wrap">
       <table>
@@ -1944,7 +2058,7 @@ function InventoryTable({ products: rows }: { products: Product[] }) {
         </thead>
 
         <tbody>
-          {rows.map((product) => (
+          {visibleRows.map((product) => (
             <tr key={product.id}>
               <td>
                 <input type="checkbox" />
@@ -1955,6 +2069,7 @@ function InventoryTable({ products: rows }: { products: Product[] }) {
                   <div className="product-thumb">
                     <Package size={16} />
                   </div>
+
                   <div>
                     <strong>{product.name}</strong>
                     <span>{product.supplier}</span>
@@ -1963,6 +2078,7 @@ function InventoryTable({ products: rows }: { products: Product[] }) {
               </td>
 
               <td className="mono">{product.sku}</td>
+
               <td>{product.category}</td>
 
               <td>
@@ -1980,9 +2096,12 @@ function InventoryTable({ products: rows }: { products: Product[] }) {
               <td>
                 <strong>
                   $
-                  {(product.stock * product.price).toLocaleString(undefined, {
-                    maximumFractionDigits: 0,
-                  })}
+                  {(product.stock * product.price).toLocaleString(
+                    undefined,
+                    {
+                      maximumFractionDigits: 0,
+                    },
+                  )}
                 </strong>
               </td>
 
@@ -2017,15 +2136,39 @@ function InventoryTable({ products: rows }: { products: Product[] }) {
 
       <div className="table-footer">
         <span>
-          Showing {rows.length > 0 ? `1–${rows.length}` : "0"} of {rows.length}
+          Showing{" "}
+          {rows.length === 0
+            ? "0"
+            : `${startIndex + 1}–${Math.min(endIndex, rows.length)}`}{" "}
+          of {rows.length}
         </span>
 
         <div>
-          <button disabled>Previous</button>
-          <button className="page-active">1</button>
-          <button disabled>2</button>
-          <button disabled>3</button>
-          <button disabled>Next</button>
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </button>
+
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+            (page) => (
+              <button
+                key={page}
+                onClick={() => goToPage(page)}
+                className={currentPage === page ? "page-active" : ""}
+              >
+                {page}
+              </button>
+            ),
+          )}
+
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages || totalPages === 0}
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
