@@ -4870,9 +4870,21 @@ function AlertsPage({
     reorder_level: number;
   };
 
+  type AlertType =
+    | "Critical Stock"
+    | "Low Stock"
+    | "Stockout Risk"
+    | "Unusual Demand";
+
   const [products, setProducts] = useState<BackendProduct[]>([]);
   const [transactions, setTransactions] = useState<BackendTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [allAlertsRead, setAllAlertsRead] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [alertFilter, setAlertFilter] = useState<
+    "All alerts" | AlertType
+  >("All alerts");
 
   useEffect(() => {
     async function loadAlertData() {
@@ -4948,11 +4960,17 @@ function AlertsPage({
     }))
     .sort((a, b) => b.sales - a.sales)[0];
 
-  const alerts = [
+  const alerts: {
+    title: string;
+    detail: string;
+    type: AlertType;
+    time: string;
+    tone: string;
+  }[] = [
     ...criticalProducts.slice(0, 3).map((product) => ({
       title: `${product.name} is out of stock`,
       detail: "Immediate attention required",
-      type: "Critical Stock",
+      type: "Critical Stock" as AlertType,
       time: "Current",
       tone: "critical",
     })),
@@ -4960,7 +4978,7 @@ function AlertsPage({
     ...lowStockProducts.slice(0, 3).map((product) => ({
       title: `${product.name} is running low`,
       detail: `Current stock: ${product.current_stock} units. Reorder level: ${product.reorder_level} units.`,
-      type: "Low Stock",
+      type: "Low Stock" as AlertType,
       time: "Current",
       tone: "warning",
     })),
@@ -4968,15 +4986,19 @@ function AlertsPage({
     ...stockoutRiskProducts.slice(0, 2).map((product) => {
       const totalSales = salesByProduct.get(product.id) || 0;
       const dailyDemand = totalSales / totalDays;
+
       const daysLeft =
         dailyDemand > 0
-          ? Math.max(1, Math.round(product.current_stock / dailyDemand))
+          ? Math.max(
+              1,
+              Math.round(product.current_stock / dailyDemand),
+            )
           : 0;
 
       return {
         title: `${product.name} may stockout soon`,
         detail: `Estimated ${daysLeft} days of stock remaining based on historical sales.`,
-        type: "Stockout Risk",
+        type: "Stockout Risk" as AlertType,
         time: "Current",
         tone: "warning",
       };
@@ -4987,13 +5009,34 @@ function AlertsPage({
           {
             title: `High sales activity for ${unusualDemandProduct.product.name}`,
             detail: `${unusualDemandProduct.sales.toLocaleString()} units sold in the available dataset.`,
-            type: "Unusual Demand",
+            type: "Unusual Demand" as AlertType,
             time: "Dataset",
             tone: "info",
           },
         ]
       : []),
   ];
+
+  const filteredAlerts =
+    alertFilter === "All alerts"
+      ? alerts
+      : alerts.filter(
+          (alert) => alert.type === alertFilter,
+        );
+
+  const handleMarkAllAsRead = () => {
+    if (alerts.length === 0) return;
+
+    setAllAlertsRead(true);
+    showToast("All alerts marked as read.");
+  };
+
+  const handleFilterChange = (
+    filter: "All alerts" | AlertType,
+  ) => {
+    setAlertFilter(filter);
+    setFilterOpen(false);
+  };
 
   return (
     <div className="page">
@@ -5002,19 +5045,120 @@ function AlertsPage({
         title="Alert center"
         subtitle="Prioritized signals that need your attention."
         action={
-          <button className="filter-button">
-            <Filter size={15} />
-            Filter alerts
-          </button>
+          <div
+            className="alert-filter-wrapper"
+            style={{
+              position: "relative",
+            }}
+          >
+            <button
+              className="filter-button"
+              onClick={() =>
+                setFilterOpen((open) => !open)
+              }
+            >
+              <Filter size={15} />
+              Filter alerts
+              <ChevronDown
+                size={14}
+                style={{
+                  transform: filterOpen
+                    ? "rotate(180deg)"
+                    : "rotate(0deg)",
+                  transition: "transform 0.2s ease",
+                }}
+              />
+            </button>
+
+            {filterOpen && (
+              <div
+                className="alert-filter-menu"
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 8px)",
+                  right: 0,
+                  width: "210px",
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "12px",
+                  padding: "8px",
+                  boxShadow:
+                    "0 18px 40px rgba(0,0,0,.35)",
+                  zIndex: 50,
+                }}
+              >
+                <div
+                  style={{
+                    padding: "7px 9px 8px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    color: "var(--text-dim)",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
+                  }}
+                >
+                  Filter alerts
+                </div>
+
+                {(
+                  [
+                    "All alerts",
+                    "Critical Stock",
+                    "Low Stock",
+                    "Stockout Risk",
+                    "Unusual Demand",
+                  ] as const
+                ).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() =>
+                      handleFilterChange(filter)
+                    }
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "9px 10px",
+                      border: "none",
+                      borderRadius: "8px",
+                      background:
+                        alertFilter === filter
+                          ? "rgba(72,213,151,.08)"
+                          : "transparent",
+                      color: "var(--text)",
+                      fontSize: "13px",
+                      textAlign: "left",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span>{filter}</span>
+
+                    {alertFilter === filter && (
+                      <Check
+                        size={14}
+                        style={{
+                          color: "var(--green)",
+                        }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         }
       />
 
       <div className="alert-overview">
         <div className="alert-overview-critical">
           <AlertTriangle size={19} />
+
           <div>
-            <strong>{criticalProducts.length} critical alerts</strong>
-            <span>Require immediate attention</span>
+            <strong>
+              {criticalProducts.length} critical alerts
+            </strong>
+            <span>  Require immediate attention  </span>
           </div>
         </div>
 
@@ -5039,9 +5183,24 @@ function AlertsPage({
         action={
           <button
             className="plain-link"
-            onClick={() => showToast("All alerts marked as read.")}
+            onClick={handleMarkAllAsRead}
+            disabled={
+              allAlertsRead || alerts.length === 0
+            }
+            style={{
+              opacity:
+                allAlertsRead || alerts.length === 0
+                  ? 0.5
+                  : 1,
+              cursor:
+                allAlertsRead || alerts.length === 0
+                  ? "default"
+                  : "pointer",
+            }}
           >
-            Mark all as read
+            {allAlertsRead
+              ? "All alerts read"
+              : "Mark all as read"}
           </button>
         }
       >
@@ -5050,21 +5209,32 @@ function AlertsPage({
             <div className="full-alert info">
               <div className="full-alert-copy">
                 <strong>Loading alerts...</strong>
-                <p>Checking current inventory and historical sales.</p>
+                <p>
+                  Checking current inventory and
+                  historical sales.
+                </p>
               </div>
             </div>
-          ) : alerts.length === 0 ? (
+          ) : filteredAlerts.length === 0 ? (
             <div className="full-alert info">
               <div className="full-alert-copy">
-                <strong>No active alerts</strong>
-                <p>All tracked inventory is currently within safe levels.</p>
+                <strong>No alerts found</strong>
+                <p>
+                  There are no alerts matching the
+                  selected filter.
+                </p>
               </div>
             </div>
           ) : (
-            alerts.map((alert, index) => (
+            filteredAlerts.map((alert, index) => (
               <div
                 className={`full-alert ${alert.tone}`}
                 key={`${alert.type}-${alert.title}-${index}`}
+                style={{
+                  opacity: allAlertsRead ? 0.55 : 1,
+                  transition:
+                    "opacity 0.2s ease",
+                }}
               >
                 <div className="full-alert-icon">
                   <AlertTriangle size={17} />
@@ -5072,7 +5242,10 @@ function AlertsPage({
 
                 <div className="full-alert-copy">
                   <div>
-                    <span className="alert-type">{alert.type}</span>
+                    <span className="alert-type">
+                      {alert.type}
+                    </span>
+
                     <time>{alert.time}</time>
                   </div>
 
@@ -5084,7 +5257,9 @@ function AlertsPage({
                 <div className="alert-actions">
                   <button
                     onClick={() =>
-                      showToast("Alert marked as resolved.")
+                      showToast(
+                        "Alert marked as resolved.",
+                      )
                     }
                   >
                     Resolve
@@ -5092,7 +5267,9 @@ function AlertsPage({
 
                   <button
                     onClick={() =>
-                      showToast("Product details available in Inventory.")
+                      showToast(
+                        "Product details available in Inventory.",
+                      )
                     }
                   >
                     View product
