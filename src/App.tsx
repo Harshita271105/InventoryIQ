@@ -3312,29 +3312,55 @@ function AnalyticsPage() {
     name: string;
   };
 
-  const [transactionData, setTransactionData] = useState<BackendTransaction[]>([]);
-  const [productData, setProductData] = useState<BackendProduct[]>([]);
-  const [categoryData, setCategoryData] = useState<BackendCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  type AnalyticsRange =
+    | "Full dataset"
+    | "Last 90 days"
+    | "Last 30 days";
+
+  const [transactionData, setTransactionData] =
+    useState<BackendTransaction[]>([]);
+
+  const [productData, setProductData] =
+    useState<BackendProduct[]>([]);
+
+  const [categoryData, setCategoryData] =
+    useState<BackendCategory[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
   const [analyticsRange, setAnalyticsRange] =
-  useState<"Full dataset" | "Last 90 days" | "Last 30 days">(
-    "Full dataset",
-  );
+    useState<AnalyticsRange>("Full dataset");
 
   useEffect(() => {
     async function loadAnalyticsData() {
       try {
-        const [transactions, products, categories] = await Promise.all([
-          apiGet<BackendTransaction[]>("/transactions"),
-          apiGet<BackendProduct[]>("/products"),
-          apiGet<BackendCategory[]>("/categories"),
+        setLoading(true);
+
+        const [
+          transactions,
+          products,
+          categories,
+        ] = await Promise.all([
+          apiGet<BackendTransaction[]>(
+            "/transactions",
+          ),
+          apiGet<BackendProduct[]>(
+            "/products",
+          ),
+          apiGet<BackendCategory[]>(
+            "/categories",
+          ),
         ]);
 
         setTransactionData(transactions);
         setProductData(products);
         setCategoryData(categories);
       } catch (error) {
-        console.error("Failed to load analytics data:", error);
+        console.error(
+          "Failed to load analytics data:",
+          error,
+        );
       } finally {
         setLoading(false);
       }
@@ -3344,101 +3370,192 @@ function AnalyticsPage() {
   }, []);
 
   const categoryMap = new Map(
-    categoryData.map((category) => [category.id, category.name]),
+    categoryData.map((category) => [
+      category.id,
+      category.name,
+    ]),
   );
 
   const productMap = new Map(
-    productData.map((product) => [product.id, product]),
+    productData.map((product) => [
+      product.id,
+      product,
+    ]),
   );
 
-  const allSalesTransactions = transactionData.filter(
-  (transaction) =>
-    transaction.type.toLowerCase() === "sale",
-);
+  /*
+   * ---------------------------------------------------------
+   * DATE RANGE
+   * ---------------------------------------------------------
+   */
 
-const latestDatasetDate =
-  allSalesTransactions.length > 0
-    ? Math.max(
-        ...allSalesTransactions.map((transaction) =>
-          new Date(
-            transaction.transaction_date,
-          ).getTime(),
-        ),
-      )
-    : 0;
+  const allSalesTransactions =
+    transactionData.filter(
+      (transaction) =>
+        transaction.type.toLowerCase() === "sale",
+    );
 
-const rangeDays =
-  analyticsRange === "Last 30 days"
-    ? 30
-    : analyticsRange === "Last 90 days"
-      ? 90
+  const latestDatasetDate =
+    allSalesTransactions.length > 0
+      ? Math.max(
+          ...allSalesTransactions.map(
+            (transaction) =>
+              new Date(
+                transaction.transaction_date,
+              ).getTime(),
+          ),
+        )
+      : 0;
+
+  const rangeDays =
+    analyticsRange === "Last 30 days"
+      ? 30
+      : analyticsRange === "Last 90 days"
+        ? 90
+        : null;
+
+  const rangeStartDate =
+    rangeDays !== null &&
+    latestDatasetDate
+      ? latestDatasetDate -
+        (rangeDays - 1) *
+          24 *
+          60 *
+          60 *
+          1000
       : null;
 
-const rangeStartDate =
-  rangeDays !== null && latestDatasetDate
-    ? latestDatasetDate -
-      (rangeDays - 1) *
-        24 *
-        60 *
-        60 *
-        1000
-    : null;
+  const salesTransactions =
+    rangeStartDate !== null
+      ? allSalesTransactions.filter(
+          (transaction) =>
+            new Date(
+              transaction.transaction_date,
+            ).getTime() >=
+            rangeStartDate,
+        )
+      : allSalesTransactions;
 
-const salesTransactions =
-  rangeStartDate !== null
-    ? allSalesTransactions.filter(
-        (transaction) =>
-          new Date(
-            transaction.transaction_date,
-          ).getTime() >= rangeStartDate,
-      )
-    : allSalesTransactions;
+  /*
+   * ---------------------------------------------------------
+   * SALES ACTIVITY
+   * ---------------------------------------------------------
+   */
 
   const trendMap = new Map<
     string,
-    { day: string; sales: number; purchases: number }
+    {
+      day: string;
+      sales: number;
+      purchases: number;
+    }
   >();
 
-  salesTransactions.forEach((transaction) => {
-    const date = transaction.transaction_date?.split(" ")[0] || "";
+  salesTransactions.forEach(
+    (transaction) => {
+      const date =
+        transaction.transaction_date?.split(
+          " ",
+        )[0] || "";
 
-    if (!date) return;
+      if (!date) return;
 
-    if (!trendMap.has(date)) {
-      trendMap.set(date, {
-        day: date,
-        sales: 0,
-        purchases: 0,
-      });
-    }
+      if (!trendMap.has(date)) {
+        trendMap.set(date, {
+          day: date,
+          sales: 0,
+          purchases: 0,
+        });
+      }
 
-    trendMap.get(date)!.sales += Math.abs(transaction.quantity);
-  });
+      trendMap.get(date)!.sales +=
+        Math.abs(transaction.quantity);
+    },
+  );
 
-  const trendData = Array.from(trendMap.values())
-    .sort((a, b) => a.day.localeCompare(b.day))
-    .slice(-12)
-    .map((item) => ({
-      ...item,
-      day: new Date(item.day).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-    }));
+ const trendData = Array.from(
+  trendMap.values(),
+)
+  .sort((a, b) =>
+    a.day.localeCompare(b.day),
+  )
+  .slice(
+    analyticsRange === "Full dataset"
+      ? -12
+      : rangeDays === 30
+        ? -30
+        : -90,
+  )
+  .map((item) => ({
+    ...item,
+    day: new Date(
+      item.day,
+    ).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
+  }));
 
-  const categoryTotals = new Map<string, number>();
+  /*
+   * ---------------------------------------------------------
+   * CATEGORY DISTRIBUTION
+   *
+   * For a selected range, category distribution is
+   * calculated from sales value during that period.
+   *
+   * For Full dataset, it uses current inventory value.
+   * ---------------------------------------------------------
+   */
 
-  productData.forEach((product) => {
-    const category =
-      categoryMap.get(product.category_id ?? -1) || "Uncategorized";
+  const categoryTotals =
+    new Map<string, number>();
 
-    const value = product.current_stock * product.unit_price;
+  if (
+    analyticsRange === "Full dataset"
+  ) {
+    productData.forEach((product) => {
+      const category =
+        categoryMap.get(
+          product.category_id ?? -1,
+        ) || "Uncategorized";
 
-    categoryTotals.set(
-      category,
-      (categoryTotals.get(category) || 0) + value,
+      const value =
+        product.current_stock *
+        product.unit_price;
+
+      categoryTotals.set(
+        category,
+        (categoryTotals.get(category) ||
+          0) + value,
+      );
+    });
+  } else {
+    salesTransactions.forEach(
+      (transaction) => {
+        const product =
+          productMap.get(
+            transaction.product_id,
+          );
+
+        if (!product) return;
+
+        const category =
+          categoryMap.get(
+            product.category_id ?? -1,
+          ) || "Uncategorized";
+
+        const value =
+          Math.abs(transaction.quantity) *
+          transaction.unit_price;
+
+        categoryTotals.set(
+          category,
+          (categoryTotals.get(category) ||
+            0) + value,
+        );
+      },
     );
-  });
+  }
 
   const categoryColors = [
     "#48d597",
@@ -3448,51 +3565,162 @@ const salesTransactions =
     "#ef6672",
   ];
 
-  const categoryDistribution = Array.from(categoryTotals.entries()).map(
-    ([name, value], index) => ({
-      name,
-      value,
-      color: categoryColors[index % categoryColors.length],
-    }),
-  );
+  const categoryDistribution =
+    Array.from(
+      categoryTotals.entries(),
+    )
+      .map(
+        ([name, value], index) => ({
+          name,
+          value,
+          color:
+            categoryColors[
+              index %
+                categoryColors.length
+            ],
+        }),
+      )
+      .sort(
+        (a, b) => b.value - a.value,
+      )
+      .slice(0, 5);
 
-  const totalInventoryValue = productData.reduce(
-    (sum, product) => sum + product.current_stock * product.unit_price,
-    0,
-  );
+  /*
+   * ---------------------------------------------------------
+   * CURRENT INVENTORY VALUE
+   * ---------------------------------------------------------
+   */
+
+  const totalInventoryValue =
+    productData.reduce(
+      (sum, product) =>
+        sum +
+        product.current_stock *
+          product.unit_price,
+      0,
+    );
+
+  /*
+   * ---------------------------------------------------------
+   * TOP MOVERS
+   * ---------------------------------------------------------
+   */
 
   const moverMap = new Map<
     number,
-    { product: BackendProduct; units: number }
+    {
+      product: BackendProduct;
+      units: number;
+    }
   >();
 
-  salesTransactions.forEach((transaction) => {
-    const product = productMap.get(transaction.product_id);
+  salesTransactions.forEach(
+    (transaction) => {
+      const product =
+        productMap.get(
+          transaction.product_id,
+        );
 
-    if (!product) return;
+      if (!product) return;
 
-    if (!moverMap.has(product.id)) {
-      moverMap.set(product.id, {
-        product,
-        units: 0,
-      });
-    }
+      if (!moverMap.has(product.id)) {
+        moverMap.set(product.id, {
+          product,
+          units: 0,
+        });
+      }
 
-    moverMap.get(product.id)!.units += Math.abs(transaction.quantity);
-  });
+      moverMap.get(product.id)!.units +=
+        Math.abs(transaction.quantity);
+    },
+  );
 
-  const topMovers = Array.from(moverMap.values())
-    .sort((a, b) => b.units - a.units)
+  const topMovers = Array.from(
+    moverMap.values(),
+  )
+    .sort(
+      (a, b) => b.units - a.units,
+    )
     .slice(0, 5);
 
-  const lowStockCount = productData.filter(
-    (product) => product.current_stock <= product.reorder_level,
-  ).length;
+  /*
+   * ---------------------------------------------------------
+   * INVENTORY HEALTH
+   *
+   * Availability = current stock condition
+   * Accuracy = sales activity in selected period
+   * Turnover = selected-period demand/current stock
+   * Reliability = stock availability
+   * Velocity = selected-period sales velocity
+   * ---------------------------------------------------------
+   */
+
+  const lowStockCount =
+    productData.filter(
+      (product) =>
+        product.current_stock <=
+        product.reorder_level,
+    ).length;
 
   const healthyPercentage =
     productData.length > 0
       ? Math.round(
-          ((productData.length - lowStockCount) / productData.length) * 100,
+          ((productData.length -
+            lowStockCount) /
+            productData.length) *
+            100,
+        )
+      : 0;
+
+  const selectedSalesUnits =
+    salesTransactions.reduce(
+      (sum, transaction) =>
+        sum +
+        Math.abs(transaction.quantity),
+      0,
+    );
+
+  const currentInventoryUnits =
+    productData.reduce(
+      (sum, product) =>
+        sum + product.current_stock,
+      0,
+    );
+
+  const salesTransactionRatio =
+    transactionData.length > 0
+      ? salesTransactions.length /
+        transactionData.filter(
+          (transaction) =>
+            transaction.type
+              .toLowerCase() === "sale",
+        ).length
+      : 0;
+
+  const turnoverScore =
+    currentInventoryUnits > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (selectedSalesUnits /
+              currentInventoryUnits) *
+              10,
+          ),
+        )
+      : 0;
+
+  const velocityScore =
+    productData.length > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (selectedSalesUnits /
+              Math.max(
+                1,
+                salesTransactions.length,
+              )) *
+              10,
+          ),
         )
       : 0;
 
@@ -3503,30 +3731,16 @@ const salesTransactions =
     },
     {
       subject: "Accuracy",
-      A: Math.min(100, Math.round((salesTransactions.length / 72740) * 100)),
+      A: Math.min(
+        100,
+        Math.round(
+          salesTransactionRatio * 100,
+        ),
+      ),
     },
     {
       subject: "Turnover",
-      A:
-        productData.length > 0
-          ? Math.min(
-              100,
-              Math.round(
-                (salesTransactions.reduce(
-                  (sum, transaction) => sum + Math.abs(transaction.quantity),
-                  0,
-                ) /
-                  Math.max(
-                    1,
-                    productData.reduce(
-                      (sum, product) => sum + product.current_stock,
-                      0,
-                    ),
-                  )) *
-                  10,
-              ),
-            )
-          : 0,
+      A: turnoverScore,
     },
     {
       subject: "Reliability",
@@ -3534,20 +3748,7 @@ const salesTransactions =
     },
     {
       subject: "Velocity",
-      A:
-        productData.length > 0
-          ? Math.min(
-              100,
-              Math.round(
-                (salesTransactions.reduce(
-                  (sum, transaction) => sum + Math.abs(transaction.quantity),
-                  0,
-                ) /
-                  Math.max(1, transactionData.length)) *
-                  10,
-              ),
-            )
-          : 0,
+      A: velocityScore,
     },
   ];
 
@@ -3558,25 +3759,51 @@ const salesTransactions =
         title="Inventory intelligence"
         subtitle="See the signals behind your stock performance."
         action={
-          <button className="filter-button">
-            <CalendarDays size={15} />
-            Dataset analytics <ChevronDown size={14} />
-          </button>
+          <select
+            className="filter-button analytics-range-select"
+            value={analyticsRange}
+            onChange={(event) =>
+              setAnalyticsRange(
+                event.target.value as AnalyticsRange,
+              )
+            }
+          >
+            <option value="Full dataset">
+              Full dataset
+            </option>
+
+            <option value="Last 90 days">
+              Last 90 days
+            </option>
+
+            <option value="Last 30 days">
+              Last 30 days
+            </option>
+          </select>
         }
       />
 
       {loading ? (
         <Card title="Loading analytics">
-          <p>Loading data from the public inventory dataset...</p>
+          <p>
+            Loading data from the public
+            inventory dataset...
+          </p>
         </Card>
       ) : (
         <div className="analytics-grid">
-          <Card title="Sales activity" className="analytics-wide">
+          {/* SALES ACTIVITY */}
+
+          <Card
+            title="Sales activity"
+            className="analytics-wide"
+          >
             <div className="chart-legend">
               <span>
                 <i className="dot blue-dot" />
                 Sales
               </span>
+
               <span>
                 <i className="dot purple-dot" />
                 Purchases
@@ -3584,27 +3811,46 @@ const salesTransactions =
             </div>
 
             <div className="large-chart analytics-bar-chart">
-              <ResponsiveContainer width="100%" height={300} minWidth={0}>
-                <BarChart data={trendData} width={0} height={300}>
-                  <CartesianGrid stroke="#263141" vertical={false} />
+              <ResponsiveContainer
+                width="100%"
+                height={300}
+                minWidth={0}
+              >
+                <BarChart
+                  data={trendData}
+                  width={0}
+                  height={300}
+                >
+                  <CartesianGrid
+                    stroke="#263141"
+                    vertical={false}
+                  />
 
                   <XAxis
                     dataKey="day"
-                    tick={{ fill: "#8390a5", fontSize: 10 }}
+                    tick={{
+                      fill: "#8390a5",
+                      fontSize: 10,
+                    }}
                     tickLine={false}
                     axisLine={false}
                   />
 
                   <YAxis
-                    tick={{ fill: "#8390a5", fontSize: 10 }}
+                    tick={{
+                      fill: "#8390a5",
+                      fontSize: 10,
+                    }}
                     tickLine={false}
                     axisLine={false}
                   />
 
                   <Tooltip
                     contentStyle={{
-                      background: "#111a27",
-                      border: "1px solid #2a394e",
+                      background:
+                        "#111a27",
+                      border:
+                        "1px solid #2a394e",
                       borderRadius: 10,
                     }}
                   />
@@ -3612,20 +3858,32 @@ const salesTransactions =
                   <Bar
                     dataKey="sales"
                     fill="#5487fa"
-                    radius={[4, 4, 0, 0]}
+                    radius={[
+                      4,
+                      4,
+                      0,
+                      0,
+                    ]}
                     maxBarSize={22}
                   />
 
                   <Bar
                     dataKey="purchases"
                     fill="#a878f6"
-                    radius={[4, 4, 0, 0]}
+                    radius={[
+                      4,
+                      4,
+                      0,
+                      0,
+                    ]}
                     maxBarSize={22}
                   />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </Card>
+
+          {/* CATEGORY DISTRIBUTION */}
 
           <Card title="Category distribution">
             <div
@@ -3647,10 +3905,15 @@ const salesTransactions =
                   display: "block",
                 }}
               >
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
                   <PieChart>
                     <Pie
-                      data={categoryDistribution}
+                      data={
+                        categoryDistribution
+                      }
                       dataKey="value"
                       nameKey="name"
                       cx="50%"
@@ -3660,26 +3923,35 @@ const salesTransactions =
                       paddingAngle={2}
                       stroke="none"
                     >
-                      {categoryDistribution.map((entry) => (
-                        <Cell
-                          key={entry.name}
-                          fill={entry.color}
-                        />
-                      ))}
+                      {categoryDistribution.map(
+                        (entry) => (
+                          <Cell
+                            key={entry.name}
+                            fill={entry.color}
+                          />
+                        ),
+                      )}
                     </Pie>
 
                     <Tooltip
-  formatter={(value) =>
-    `$${Number(value ?? 0).toLocaleString(undefined, {
-      maximumFractionDigits: 0,
-    })}`
-  }
-  contentStyle={{
-    background: "#111a27",
-    border: "1px solid #2a394e",
-    borderRadius: 10,
-  }}
-/>
+                      formatter={(value) =>
+                        `$${Number(
+                          value ?? 0,
+                        ).toLocaleString(
+                          undefined,
+                          {
+                            maximumFractionDigits: 0,
+                          },
+                        )}`
+                      }
+                      contentStyle={{
+                        background:
+                          "#111a27",
+                        border:
+                          "1px solid #2a394e",
+                        borderRadius: 10,
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -3697,34 +3969,63 @@ const salesTransactions =
               >
                 <strong>
                   $
-                  {totalInventoryValue >= 1000000
-                    ? `${(totalInventoryValue / 1000000).toFixed(1)}M`
-                    : `${(totalInventoryValue / 1000).toFixed(1)}K`}
+                  {totalInventoryValue >=
+                  1000000
+                    ? `${(
+                        totalInventoryValue /
+                        1000000
+                      ).toFixed(1)}M`
+                    : `${(
+                        totalInventoryValue /
+                        1000
+                      ).toFixed(1)}K`}
                 </strong>
 
-                <span>Total value</span>
+                <span>
+                  Current inventory
+                </span>
               </div>
             </div>
 
             <div className="mini-legend">
-              {categoryDistribution.map((item) => (
-                <span key={item.name}>
-                  <i style={{ background: item.color }} />
-                  {item.name}
-                </span>
-              ))}
+              {categoryDistribution.map(
+                (item) => (
+                  <span key={item.name}>
+                    <i
+                      style={{
+                        background:
+                          item.color,
+                      }}
+                    />
+
+                    {item.name}
+                  </span>
+                ),
+              )}
             </div>
           </Card>
 
+          {/* INVENTORY HEALTH */}
+
           <Card title="Inventory health">
             <div className="radar-chart">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radarData}>
-                  <PolarGrid stroke="#2a384a" />
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+              >
+                <RadarChart
+                  data={radarData}
+                >
+                  <PolarGrid
+                    stroke="#2a384a"
+                  />
 
                   <PolarAngleAxis
                     dataKey="subject"
-                    tick={{ fill: "#98a4b7", fontSize: 10 }}
+                    tick={{
+                      fill: "#98a4b7",
+                      fontSize: 10,
+                    }}
                   />
 
                   <Radar
@@ -3738,30 +4039,64 @@ const salesTransactions =
             </div>
           </Card>
 
+          {/* TOP MOVERS */}
+
           <Card title="Top movers">
             <div className="movers-list">
-              {topMovers.map((item, index) => {
-                const category =
-                  categoryMap.get(item.product.category_id ?? -1) ||
-                  "Uncategorized";
+              {topMovers.map(
+                (item, index) => {
+                  const category =
+                    categoryMap.get(
+                      item.product
+                        .category_id ?? -1,
+                    ) ||
+                    "Uncategorized";
 
-                return (
-                  <div key={item.product.id}>
-                    <span className="rank">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
+                  return (
+                    <div
+                      key={
+                        item.product.id
+                      }
+                    >
+                      <span className="rank">
+                        {String(
+                          index + 1,
+                        ).padStart(2, "0")}
+                      </span>
 
-                    <div>
-                      <strong>{item.product.name}</strong>
-                      <small>{category}</small>
+                      <div>
+                        <strong>
+                          {
+                            item.product
+                              .name
+                          }
+                        </strong>
+
+                        <small>
+                          {category}
+                        </small>
+                      </div>
+
+                      <b className="positive">
+                        {item.units.toLocaleString()}{" "}
+                        sold
+                      </b>
                     </div>
+                  );
+                },
+              )}
 
-                    <b className="positive">
-                      {item.units.toLocaleString()} sold
-                    </b>
-                  </div>
-                );
-              })}
+              {topMovers.length === 0 && (
+                <span
+                  style={{
+                    color: "#8390a5",
+                    fontSize: 13,
+                  }}
+                >
+                  No sales found for this
+                  period.
+                </span>
+              )}
             </div>
           </Card>
         </div>
