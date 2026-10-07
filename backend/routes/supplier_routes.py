@@ -168,4 +168,4 @@ def delete_supplier(supplier_id):
     except Exception as error:
         return jsonify({
             "error": str(error)
-        }), 400
+        }), 400 
