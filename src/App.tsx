@@ -5300,27 +5300,166 @@ function SuppliersPage() {
     reorder_level: number;
   };
 
+  type BackendSupplier = {
+    id: number;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+    reliability_score: number;
+    average_delivery_days: number;
+  };
+
   const [products, setProducts] = useState<BackendProduct[]>([]);
+  const [suppliers, setSuppliers] = useState<BackendSupplier[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadSupplierData() {
-      try {
-        const productData = await apiGet<BackendProduct[]>("/products");
-        setProducts(productData);
-      } catch (error) {
-        console.error("Failed to load supplier data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
+  const [addSupplierOpen, setAddSupplierOpen] =
+    useState(false);
 
+  const [supplierName, setSupplierName] =
+    useState("");
+  const [supplierEmail, setSupplierEmail] =
+    useState("");
+  const [supplierPhone, setSupplierPhone] =
+    useState("");
+  const [supplierAddress, setSupplierAddress] =
+    useState("");
+  const [reliabilityScore, setReliabilityScore] =
+    useState("");
+  const [deliveryDays, setDeliveryDays] =
+    useState("");
+
+  const [savingSupplier, setSavingSupplier] =
+    useState(false);
+
+  const [successMessage, setSuccessMessage] =
+    useState("");
+
+  const loadSupplierData = async () => {
+    try {
+      setLoading(true);
+
+      const [productData, supplierData] =
+        await Promise.all([
+          apiGet<BackendProduct[]>("/products"),
+          apiGet<BackendSupplier[]>("/suppliers"),
+        ]);
+
+      setProducts(productData);
+      setSuppliers(supplierData);
+    } catch (error) {
+      console.error(
+        "Failed to load supplier data:",
+        error,
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadSupplierData();
   }, []);
 
-  const productsWithSuppliers = products.filter(
-    (product) => product.supplier_id !== null,
-  );
+  const productsWithSuppliers =
+    products.filter(
+      (product) =>
+        product.supplier_id !== null,
+    );
+
+  const averageReliability =
+    suppliers.length > 0
+      ? suppliers.reduce(
+          (sum, supplier) =>
+            sum +
+            Number(
+              supplier.reliability_score || 0,
+            ),
+          0,
+        ) / suppliers.length
+      : 0;
+
+  const averageDelivery =
+    suppliers.length > 0
+      ? suppliers.reduce(
+          (sum, supplier) =>
+            sum +
+            Number(
+              supplier.average_delivery_days ||
+                0,
+            ),
+          0,
+        ) / suppliers.length
+      : 0;
+
+  const resetSupplierForm = () => {
+    setSupplierName("");
+    setSupplierEmail("");
+    setSupplierPhone("");
+    setSupplierAddress("");
+    setReliabilityScore("");
+    setDeliveryDays("");
+  };
+
+  const handleAddSupplier = async () => {
+    if (!supplierName.trim()) {
+      return;
+    }
+
+    try {
+      setSavingSupplier(true);
+
+      await apiPost<BackendSupplier>(
+        "/suppliers",
+        {
+          name: supplierName.trim(),
+          email:
+            supplierEmail.trim() || null,
+          phone:
+            supplierPhone.trim() || null,
+          address:
+            supplierAddress.trim() || null,
+          reliability_score:
+            reliabilityScore
+              ? Number(reliabilityScore)
+              : 0,
+          average_delivery_days:
+            deliveryDays
+              ? Number(deliveryDays)
+              : 0,
+        },
+      );
+
+      setAddSupplierOpen(false);
+      resetSupplierForm();
+
+      setSuccessMessage(
+        "Supplier added successfully.",
+      );
+
+      await loadSupplierData();
+
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+    } catch (error) {
+      console.error(
+        "Failed to add supplier:",
+        error,
+      );
+
+      setSuccessMessage(
+        "Failed to add supplier.",
+      );
+
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+    } finally {
+      setSavingSupplier(false);
+    }
+  };
 
   return (
     <div className="page">
@@ -5329,7 +5468,12 @@ function SuppliersPage() {
         title="Supplier performance"
         subtitle="Understand reliability, lead times, and partnership health."
         action={
-          <button className="primary-button">
+          <button
+            className="primary-button"
+            onClick={() =>
+              setAddSupplierOpen(true)
+            }
+          >
             <Plus size={15} />
             Add supplier
           </button>
@@ -5339,41 +5483,99 @@ function SuppliersPage() {
       <div className="supplier-kpis">
         <div>
           <Truck size={17} />
-          <span>Supplier reliability</span>
-          <strong>N/A</strong>
+
+          <span>
+            Supplier reliability
+          </span>
+
+          <strong>
+            {suppliers.length > 0
+              ? `${averageReliability.toFixed(
+                  1,
+                )}%`
+              : "N/A"}
+          </strong>
         </div>
 
         <div>
           <Clock3 size={17} />
-          <span>Average delivery</span>
-          <strong>N/A</strong>
+
+          <span>
+            Average delivery
+          </span>
+
+          <strong>
+            {suppliers.length > 0
+              ? `${averageDelivery.toFixed(
+                  1,
+                )} days`
+              : "N/A"}
+          </strong>
         </div>
 
         <div>
           <ClipboardList size={17} />
-          <span>Active purchase orders</span>
+
+          <span>
+            Active purchase orders
+          </span>
+
           <strong>N/A</strong>
         </div>
       </div>
 
-      <Card title="Supplier data availability">
+      {successMessage && (
+        <div
+          style={{
+            marginBottom: "16px",
+            padding: "12px 14px",
+            borderRadius: "10px",
+            border:
+              "1px solid rgba(72, 213, 151, 0.25)",
+            background:
+              "rgba(72, 213, 151, 0.08)",
+            color: "var(--green)",
+            fontSize: "13px",
+          }}
+        >
+          {successMessage}
+        </div>
+      )}
+
+      <Card
+        title={
+          suppliers.length > 0
+            ? "All suppliers"
+            : "Supplier data availability"
+        }
+      >
         {loading ? (
           <div className="supplier-table">
             <div className="reorder-row">
-              <span>Loading supplier information...</span>
+              <span>
+                Loading supplier information...
+              </span>
             </div>
           </div>
-        ) : productsWithSuppliers.length === 0 ? (
+        ) : suppliers.length === 0 ? (
           <div className="supplier-table">
             <div className="reorder-row">
               <div className="supplier-name">
-                <div className="supplier-avatar">N/A</div>
+                <div className="supplier-avatar">
+                  N/A
+                </div>
+
                 <div>
-                  <strong>Supplier information unavailable</strong>
+                  <strong>
+                    Supplier information unavailable
+                  </strong>
+
                   <span>
-                    The public inventory dataset does not provide supplier
-                    names, delivery times, reliability scores, or purchase
-                    order information.
+                    The public inventory dataset
+                    does not provide supplier names,
+                    delivery times, reliability
+                    scores, or purchase order
+                    information.
                   </span>
                 </div>
               </div>
@@ -5381,7 +5583,9 @@ function SuppliersPage() {
               <span>—</span>
               <span>—</span>
               <span>—</span>
+
               <strong>N/A</strong>
+
               <span className="supplier-status">
                 Dataset limitation
               </span>
@@ -5398,31 +5602,476 @@ function SuppliersPage() {
               <span>Status</span>
             </div>
 
-            <div className="reorder-row">
-              <div className="supplier-name">
-                <div className="supplier-avatar">
-                  DATA
-                </div>
+            {suppliers.map(
+              (supplier) => {
+                const linkedProducts =
+                  products.filter(
+                    (product) =>
+                      product.supplier_id ===
+                      supplier.id,
+                  ).length;
 
-                <div>
-                  <strong>Dataset suppliers</strong>
-                  <span>
-                    {productsWithSuppliers.length} products linked
-                  </span>
-                </div>
-              </div>
+                return (
+                  <div
+                    className="reorder-row"
+                    key={supplier.id}
+                  >
+                    <div className="supplier-name">
+                      <div className="supplier-avatar">
+                        {supplier.name
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </div>
 
-              <span>{productsWithSuppliers.length}</span>
-              <span>N/A</span>
-              <span>N/A</span>
-              <strong>N/A</strong>
-              <span className="supplier-status">
-                Dataset based
-              </span>
-            </div>
+                      <div>
+                        <strong>
+                          {supplier.name}
+                        </strong>
+
+                        <span>
+                          {supplier.email ||
+                            "Supplier record"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span>
+                      {linkedProducts}
+                    </span>
+
+                    <span>
+                      N/A
+                    </span>
+
+                    <span>
+                      {Number(
+                        supplier.average_delivery_days,
+                      ) > 0
+                        ? `${Number(
+                            supplier.average_delivery_days,
+                          ).toFixed(
+                            1,
+                          )} days`
+                        : "N/A"}
+                    </span>
+
+                    <strong
+                      className={
+                        Number(
+                          supplier.reliability_score,
+                        ) >= 80
+                          ? "positive"
+                          : Number(
+                                supplier.reliability_score,
+                              ) > 0
+                            ? "negative"
+                            : ""
+                      }
+                    >
+                      {Number(
+                        supplier.reliability_score,
+                      ) > 0
+                        ? `${Number(
+                            supplier.reliability_score,
+                          ).toFixed(0)}%`
+                        : "N/A"}
+                    </strong>
+
+                    <span className="supplier-status">
+                      Active
+                    </span>
+                  </div>
+                );
+              },
+            )}
           </div>
         )}
       </Card>
+
+      {addSupplierOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background:
+              "rgba(0, 0, 0, 0.65)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: "20px",
+          }}
+          onClick={() =>
+            setAddSupplierOpen(false)
+          }
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "560px",
+              background: "var(--card)",
+              border:
+                "1px solid var(--border)",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow:
+                "0 24px 70px rgba(0, 0, 0, 0.45)",
+            }}
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems:
+                  "flex-start",
+                justifyContent:
+                  "space-between",
+                marginBottom: "22px",
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: "20px",
+                  }}
+                >
+                  Add supplier
+                </h2>
+
+                <p
+                  style={{
+                    margin:
+                      "6px 0 0",
+                    color:
+                      "var(--text-dim)",
+                    fontSize: "13px",
+                  }}
+                >
+                  Add supplier information to
+                  your inventory system.
+                </p>
+              </div>
+
+              <button
+                className="more-button"
+                onClick={() =>
+                  setAddSupplierOpen(false)
+                }
+                style={{
+                  fontSize: "18px",
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "1fr 1fr",
+                gap: "14px",
+              }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "7px",
+                    fontSize: "12px",
+                    color:
+                      "var(--text-dim)",
+                  }}
+                >
+                  Supplier name *
+                </label>
+
+                <input
+                  value={supplierName}
+                  onChange={(event) =>
+                    setSupplierName(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Enter supplier name"
+                  style={{
+                    width: "100%",
+                    boxSizing:
+                      "border-box",
+                    padding:
+                      "10px 12px",
+                    borderRadius: "9px",
+                    border:
+                      "1px solid var(--border)",
+                    background:
+                      "var(--bg)",
+                    color:
+                      "var(--text)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "7px",
+                    fontSize: "12px",
+                    color:
+                      "var(--text-dim)",
+                  }}
+                >
+                  Email
+                </label>
+
+                <input
+                  type="email"
+                  value={supplierEmail}
+                  onChange={(event) =>
+                    setSupplierEmail(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="supplier@email.com"
+                  style={{
+                    width: "100%",
+                    boxSizing:
+                      "border-box",
+                    padding:
+                      "10px 12px",
+                    borderRadius: "9px",
+                    border:
+                      "1px solid var(--border)",
+                    background:
+                      "var(--bg)",
+                    color:
+                      "var(--text)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "7px",
+                    fontSize: "12px",
+                    color:
+                      "var(--text-dim)",
+                  }}
+                >
+                  Phone
+                </label>
+
+                <input
+                  value={supplierPhone}
+                  onChange={(event) =>
+                    setSupplierPhone(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="+91 XXXXX XXXXX"
+                  style={{
+                    width: "100%",
+                    boxSizing:
+                      "border-box",
+                    padding:
+                      "10px 12px",
+                    borderRadius: "9px",
+                    border:
+                      "1px solid var(--border)",
+                    background:
+                      "var(--bg)",
+                    color:
+                      "var(--text)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "7px",
+                    fontSize: "12px",
+                    color:
+                      "var(--text-dim)",
+                  }}
+                >
+                  Reliability score
+                </label>
+
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={
+                    reliabilityScore
+                  }
+                  onChange={(event) =>
+                    setReliabilityScore(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="e.g. 95"
+                  style={{
+                    width: "100%",
+                    boxSizing:
+                      "border-box",
+                    padding:
+                      "10px 12px",
+                    borderRadius: "9px",
+                    border:
+                      "1px solid var(--border)",
+                    background:
+                      "var(--bg)",
+                    color:
+                      "var(--text)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "7px",
+                    fontSize: "12px",
+                    color:
+                      "var(--text-dim)",
+                  }}
+                >
+                  Average delivery days
+                </label>
+
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={
+                    deliveryDays
+                  }
+                  onChange={(event) =>
+                    setDeliveryDays(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="e.g. 4.5"
+                  style={{
+                    width: "100%",
+                    boxSizing:
+                      "border-box",
+                    padding:
+                      "10px 12px",
+                    borderRadius: "9px",
+                    border:
+                      "1px solid var(--border)",
+                    background:
+                      "var(--bg)",
+                    color:
+                      "var(--text)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "7px",
+                    fontSize: "12px",
+                    color:
+                      "var(--text-dim)",
+                  }}
+                >
+                  Address
+                </label>
+
+                <input
+                  value={
+                    supplierAddress
+                  }
+                  onChange={(event) =>
+                    setSupplierAddress(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Supplier address"
+                  style={{
+                    width: "100%",
+                    boxSizing:
+                      "border-box",
+                    padding:
+                      "10px 12px",
+                    borderRadius: "9px",
+                    border:
+                      "1px solid var(--border)",
+                    background:
+                      "var(--bg)",
+                    color:
+                      "var(--text)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent:
+                  "flex-end",
+                gap: "10px",
+                marginTop: "24px",
+              }}
+            >
+              <button
+                className="filter-button"
+                onClick={() => {
+                  setAddSupplierOpen(
+                    false,
+                  );
+                  resetSupplierForm();
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="primary-button"
+                onClick={
+                  handleAddSupplier
+                }
+                disabled={
+                  savingSupplier ||
+                  !supplierName.trim()
+                }
+                style={{
+                  opacity:
+                    savingSupplier ||
+                    !supplierName.trim()
+                      ? 0.6
+                      : 1,
+                }}
+              >
+                <Plus size={15} />
+
+                {savingSupplier
+                  ? "Saving..."
+                  : "Add supplier"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
