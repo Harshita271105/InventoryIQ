@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Copy,
   Activity,
   AlertTriangle,
   ArrowDownRight,
@@ -2189,6 +2190,9 @@ function ProductsPage({
   onAction: (action: string) => void;
 }) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] =
+    useState<Product | null>(null);
 
   const itemsPerPage = 20;
   const totalPages = Math.ceil(rows.length / itemsPerPage);
@@ -2197,19 +2201,55 @@ function ProductsPage({
     setCurrentPage(1);
   }, [rows.length]);
 
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
+  const startIndex =
+    (currentPage - 1) * itemsPerPage;
 
-  const visibleRows = rows.slice(startIndex, endIndex);
+  const endIndex =
+    startIndex + itemsPerPage;
+
+  const visibleRows = rows.slice(
+    startIndex,
+    endIndex,
+  );
 
   const goToPage = (page: number) => {
     setCurrentPage(
-      Math.max(1, Math.min(page, totalPages))
+      Math.max(
+        1,
+        Math.min(page, totalPages),
+      ),
     );
+
+    setOpenMenuId(null);
   };
 
-  const startItem = rows.length === 0 ? 0 : startIndex + 1;
-  const endItem = Math.min(endIndex, rows.length);
+  const startItem =
+    rows.length === 0
+      ? 0
+      : startIndex + 1;
+
+  const endItem = Math.min(
+    endIndex,
+    rows.length,
+  );
+
+  const handleCopySku = async (
+    product: Product,
+  ) => {
+    try {
+      await navigator.clipboard.writeText(
+        product.sku,
+      );
+
+      setOpenMenuId(null);
+      alert(`SKU copied: ${product.sku}`);
+    } catch (error) {
+      console.error(
+        "Failed to copy SKU:",
+        error,
+      );
+    }
+  };
 
   return (
     <div className="page">
@@ -2220,7 +2260,9 @@ function ProductsPage({
         action={
           <button
             className="primary-button"
-            onClick={() => onAction("Add Product")}
+            onClick={() =>
+              onAction("Add Product")
+            }
           >
             <Plus size={15} />
             Add Product
@@ -2240,13 +2282,53 @@ function ProductsPage({
                 <Package size={29} />
               </div>
 
-              <button className="more-button">
-                <MoreHorizontal size={17} />
-              </button>
+              <div className="product-menu-wrapper">
+                <button
+                  className="more-button"
+                  onClick={() =>
+                    setOpenMenuId(
+                      openMenuId === product.id
+                        ? null
+                        : product.id,
+                    )
+                  }
+                >
+                  <MoreHorizontal size={17} />
+                </button>
+
+                {openMenuId === product.id && (
+                  <div className="product-menu">
+                    <button
+                      onClick={() => {
+                        setSelectedProduct(
+                          product,
+                        );
+                        setOpenMenuId(null);
+                      }}
+                    >
+                      <Package size={14} />
+                      View details
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        handleCopySku(product)
+                      }
+                    >
+                      <Copy size={14} />
+                      Copy SKU
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <span
-              className={`status-badge ${statusClasses[product.status]}`}
+              className={`status-badge ${
+                statusClasses[
+                  product.status
+                ]
+              }`}
             >
               <i />
               {product.status}
@@ -2255,30 +2337,53 @@ function ProductsPage({
             <h3>{product.name}</h3>
 
             <p>
-              {product.sku} · {product.category}
+              {product.sku} ·{" "}
+              {product.category}
             </p>
 
             <div className="product-card-meta">
               <div>
-                <small>Current stock</small>
-                <strong>{product.stock}</strong>
-              </div>
+                <small>
+                  Current stock
+                </small>
 
-              <div>
-                <small>Unit price</small>
                 <strong>
-                  ${product.price.toFixed(2)}
+                  {product.stock}
                 </strong>
               </div>
 
               <div>
-                <small>Supplier</small>
-                <strong>{product.supplier}</strong>
+                <small>
+                  Unit price
+                </small>
+
+                <strong>
+                  $
+                  {product.price.toFixed(
+                    2,
+                  )}
+                </strong>
+              </div>
+
+              <div>
+                <small>
+                  Supplier
+                </small>
+
+                <strong>
+                  {product.supplier}
+                </strong>
               </div>
             </div>
 
-            <button className="card-link">
-              View product <ArrowRight size={14} />
+            <button
+              className="card-link"
+              onClick={() =>
+                setSelectedProduct(product)
+              }
+            >
+              View product{" "}
+              <ArrowRight size={14} />
             </button>
           </motion.div>
         ))}
@@ -2287,28 +2392,37 @@ function ProductsPage({
       {rows.length > 0 && (
         <div className="pagination">
           <span className="pagination-info">
-            Showing {startItem}–{endItem} of {rows.length}
+            Showing {startItem}–{endItem} of{" "}
+            {rows.length}
           </span>
 
           <div className="pagination-controls">
             <button
               className="pagination-button"
               disabled={currentPage === 1}
-              onClick={() => goToPage(currentPage - 1)}
+              onClick={() =>
+                goToPage(currentPage - 1)
+              }
             >
               Previous
             </button>
 
             {Array.from(
-              { length: totalPages },
-              (_, index) => index + 1
+              {
+                length: totalPages,
+              },
+              (_, index) => index + 1,
             ).map((page) => (
               <button
                 key={page}
                 className={`pagination-number ${
-                  currentPage === page ? "active" : ""
+                  currentPage === page
+                    ? "active"
+                    : ""
                 }`}
-                onClick={() => goToPage(page)}
+                onClick={() =>
+                  goToPage(page)
+                }
               >
                 {page}
               </button>
@@ -2316,10 +2430,121 @@ function ProductsPage({
 
             <button
               className="pagination-button"
-              disabled={currentPage === totalPages}
-              onClick={() => goToPage(currentPage + 1)}
+              disabled={
+                currentPage === totalPages
+              }
+              onClick={() =>
+                goToPage(currentPage + 1)
+              }
             >
               Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {selectedProduct && (
+        <div
+          className="product-details-overlay"
+          onClick={() =>
+            setSelectedProduct(null)
+          }
+        >
+          <div
+            className="product-details-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="product-details-header">
+              <div>
+                <span>
+                  Product details
+                </span>
+
+                <h2>
+                  {selectedProduct.name}
+                </h2>
+              </div>
+
+              <button
+                className="more-button"
+                onClick={() =>
+                  setSelectedProduct(null)
+                }
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="product-details-grid">
+              <div>
+                <small>SKU</small>
+                <strong>
+                  {selectedProduct.sku}
+                </strong>
+              </div>
+
+              <div>
+                <small>Category</small>
+                <strong>
+                  {selectedProduct.category}
+                </strong>
+              </div>
+
+              <div>
+                <small>Status</small>
+                <strong>
+                  {selectedProduct.status}
+                </strong>
+              </div>
+
+              <div>
+                <small>Current stock</small>
+                <strong>
+                  {selectedProduct.stock}
+                </strong>
+              </div>
+
+              <div>
+                <small>Reorder level</small>
+                <strong>
+                  {selectedProduct.reorderLevel}
+                </strong>
+              </div>
+
+              <div>
+                <small>Unit price</small>
+                <strong>
+                  $
+                  {selectedProduct.price.toFixed(
+                    2,
+                  )}
+                </strong>
+              </div>
+
+              <div>
+                <small>Supplier</small>
+                <strong>
+                  {selectedProduct.supplier}
+                </strong>
+              </div>
+
+              <div>
+                <small>Updated</small>
+                <strong>
+                  {selectedProduct.updated}
+                </strong>
+              </div>
+            </div>
+
+            <button
+              className="primary-button"
+              onClick={() =>
+                setSelectedProduct(null)
+              }
+            >
+              Close
             </button>
           </div>
         </div>
@@ -2351,22 +2576,56 @@ function TransactionsPage({
     sku: string;
   };
 
-  const [transactionData, setTransactionData] = useState<BackendTransaction[]>([]);
-  const [productData, setProductData] = useState<BackendProduct[]>([]);
+  const [transactionData, setTransactionData] =
+    useState<BackendTransaction[]>([]);
+
+  const [productData, setProductData] =
+    useState<BackendProduct[]>([]);
+
   const [loading, setLoading] = useState(true);
+
+  const [transactionSearch, setTransactionSearch] =
+    useState("");
+
+  const [typeFilter, setTypeFilter] =
+    useState("All types");
+
+  const [fromDate, setFromDate] =
+    useState("");
+
+  const [toDate, setToDate] =
+    useState("");
+
+  const [currentPage, setCurrentPage] =
+    useState(1);
+
+  const itemsPerPage = 20;
 
   useEffect(() => {
     async function loadTransactions() {
       try {
-        const [transactionsResponse, productsResponse] = await Promise.all([
-          apiGet<BackendTransaction[]>("/transactions"),
-          apiGet<BackendProduct[]>("/products"),
+        const [
+          transactionsResponse,
+          productsResponse,
+        ] = await Promise.all([
+          apiGet<BackendTransaction[]>(
+            "/transactions",
+          ),
+          apiGet<BackendProduct[]>(
+            "/products",
+          ),
         ]);
 
-        setTransactionData(transactionsResponse);
+        setTransactionData(
+          transactionsResponse,
+        );
+
         setProductData(productsResponse);
       } catch (error) {
-        console.error("Failed to load transactions:", error);
+        console.error(
+          "Failed to load transactions:",
+          error,
+        );
       } finally {
         setLoading(false);
       }
@@ -2376,26 +2635,303 @@ function TransactionsPage({
   }, []);
 
   const productMap = new Map(
-    productData.map((product) => [product.id, product]),
+    productData.map((product) => [
+      product.id,
+      product,
+    ]),
   );
 
-  const getTransactionType = (type: string): TransactionType => {
+  const getTransactionType = (
+    type: string,
+  ): TransactionType => {
     const normalized = type.toLowerCase();
 
-    if (normalized === "sale") return "Sale";
-    if (normalized === "purchase") return "Purchase";
-    if (normalized === "return") return "Return";
+    if (normalized === "sale")
+      return "Sale";
+
+    if (normalized === "purchase")
+      return "Purchase";
+
+    if (normalized === "return")
+      return "Return";
 
     return "Adjustment";
   };
 
-  const totalTransactions = transactionData.length;
+  /*
+   * ---------------------------------------------------------
+   * FILTER TRANSACTIONS
+   * ---------------------------------------------------------
+   */
 
-  const unitsSold = transactionData
-    .filter((transaction) => transaction.type.toLowerCase() === "sale")
-    .reduce((sum, transaction) => sum + Math.abs(transaction.quantity), 0);
+  const filteredTransactions =
+    transactionData.filter(
+      (transaction) => {
+        const product =
+          productMap.get(
+            transaction.product_id,
+          );
 
-  const recentTransactions = transactionData.slice(0, 5);
+        const searchValue =
+          transactionSearch
+            .trim()
+            .toLowerCase();
+
+        const matchesSearch =
+          !searchValue ||
+          String(transaction.id)
+            .toLowerCase()
+            .includes(searchValue) ||
+          product?.name
+            .toLowerCase()
+            .includes(searchValue) ||
+          product?.sku
+            .toLowerCase()
+            .includes(searchValue);
+
+        const transactionType =
+          getTransactionType(
+            transaction.type,
+          );
+
+        const matchesType =
+          typeFilter === "All types" ||
+          transactionType === typeFilter;
+
+        const transactionDate =
+          transaction.transaction_date
+            ?.split(" ")[0] || "";
+
+        const matchesFromDate =
+          !fromDate ||
+          transactionDate >= fromDate;
+
+        const matchesToDate =
+          !toDate ||
+          transactionDate <= toDate;
+
+        return (
+          matchesSearch &&
+          matchesType &&
+          matchesFromDate &&
+          matchesToDate
+        );
+      },
+    );
+
+  /*
+   * ---------------------------------------------------------
+   * PAGINATION
+   * ---------------------------------------------------------
+   */
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      filteredTransactions.length /
+        itemsPerPage,
+    ),
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    transactionSearch,
+    typeFilter,
+    fromDate,
+    toDate,
+  ]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const startIndex =
+    (currentPage - 1) *
+    itemsPerPage;
+
+  const endIndex =
+    startIndex + itemsPerPage;
+
+  const visibleTransactions =
+    filteredTransactions.slice(
+      startIndex,
+      endIndex,
+    );
+
+  const startItem =
+    filteredTransactions.length === 0
+      ? 0
+      : startIndex + 1;
+
+  const endItem = Math.min(
+    endIndex,
+    filteredTransactions.length,
+  );
+
+  const goToPage = (page: number) => {
+    setCurrentPage(
+      Math.max(
+        1,
+        Math.min(page, totalPages),
+      ),
+    );
+  };
+
+  /*
+   * ---------------------------------------------------------
+   * KPI VALUES
+   * ---------------------------------------------------------
+   */
+
+  const totalTransactions =
+    transactionData.length;
+
+  const unitsSold =
+    transactionData
+      .filter(
+        (transaction) =>
+          transaction.type.toLowerCase() ===
+          "sale",
+      )
+      .reduce(
+        (sum, transaction) =>
+          sum +
+          Math.abs(transaction.quantity),
+        0,
+      );
+
+  /*
+   * ---------------------------------------------------------
+   * CLEAR FILTERS
+   * ---------------------------------------------------------
+   */
+
+  const clearFilters = () => {
+    setTransactionSearch("");
+    setTypeFilter("All types");
+    setFromDate("");
+    setToDate("");
+  };
+
+  const hasFilters =
+    transactionSearch ||
+    typeFilter !== "All types" ||
+    fromDate ||
+    toDate;
+
+  /*
+   * ---------------------------------------------------------
+   * EXPORT CSV
+   * ---------------------------------------------------------
+   */
+
+  const exportTransactions = () => {
+    if (
+      filteredTransactions.length === 0
+    ) {
+      alert(
+        "There are no transactions to export.",
+      );
+      return;
+    }
+
+    const header = [
+      "Transaction ID",
+      "Product",
+      "SKU",
+      "Type",
+      "Quantity",
+      "Unit Price",
+      "Total Amount",
+      "Date",
+      "User",
+    ];
+
+    const rows =
+      filteredTransactions.map(
+        (transaction) => {
+          const product =
+            productMap.get(
+              transaction.product_id,
+            );
+
+          const type =
+            getTransactionType(
+              transaction.type,
+            );
+
+          return [
+            transaction.id,
+            product?.name ||
+              `Product #${transaction.product_id}`,
+            product?.sku || "N/A",
+            type,
+            transaction.quantity,
+            transaction.unit_price.toFixed(
+              2,
+            ),
+            Math.abs(
+              transaction.total_amount,
+            ).toFixed(2),
+            transaction.transaction_date,
+            transaction.user_id
+              ? `User #${transaction.user_id}`
+              : "Dataset",
+          ];
+        },
+      );
+
+    const csvContent = [
+      header,
+      ...rows,
+    ]
+      .map((row) =>
+        row
+          .map((value) =>
+            `"${String(value).replace(
+              /"/g,
+              '""',
+            )}"`,
+          )
+          .join(","),
+      )
+      .join("\n");
+
+    const blob = new Blob(
+      [csvContent],
+      {
+        type: "text/csv;charset=utf-8;",
+      },
+    );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = url;
+
+    link.download =
+      "InventoryIQ_Transactions.csv";
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  };
+
+  /*
+   * ---------------------------------------------------------
+   * UI
+   * ---------------------------------------------------------
+   */
 
   return (
     <div className="page">
@@ -2406,7 +2942,11 @@ function TransactionsPage({
         action={
           <button
             className="primary-button"
-            onClick={() => onAction("Record Transaction")}
+            onClick={() =>
+              onAction(
+                "Record Transaction",
+              )
+            }
           >
             <Plus size={15} />
             Record transaction
@@ -2417,43 +2957,147 @@ function TransactionsPage({
       <div className="transaction-kpis">
         <div>
           <span>Total transactions</span>
-          <strong>{totalTransactions.toLocaleString()}</strong>
-          <small>From public inventory dataset</small>
+
+          <strong>
+            {totalTransactions.toLocaleString()}
+          </strong>
+
+          <small>
+            From public inventory dataset
+          </small>
         </div>
 
         <div>
           <span>Units sold</span>
-          <strong>{unitsSold.toLocaleString()}</strong>
-          <small>Based on recorded sales</small>
+
+          <strong>
+            {unitsSold.toLocaleString()}
+          </strong>
+
+          <small>
+            Based on recorded sales
+          </small>
         </div>
 
         <div>
           <span>Units received</span>
+
           <strong>N/A</strong>
-          <small>Not available in source data</small>
+
+          <small>
+            Not available in source data
+          </small>
         </div>
       </div>
 
       <Card
-        title="Recent transactions"
+        title="Transactions"
         action={
-          <button className="filter-button">
+          <button
+            className="filter-button"
+            onClick={
+              exportTransactions
+            }
+          >
             <Download size={15} />
             Export CSV
           </button>
         }
       >
+        {/* FILTER BAR */}
+
+        <div className="transaction-filters">
+          <div className="table-search">
+            <Search size={16} />
+
+            <input
+              value={transactionSearch}
+              onChange={(event) =>
+                setTransactionSearch(
+                  event.target.value,
+                )
+              }
+              placeholder="Search ID, product or SKU..."
+            />
+          </div>
+
+          <select
+            value={typeFilter}
+            onChange={(event) =>
+              setTypeFilter(
+                event.target.value,
+              )
+            }
+          >
+            <option>All types</option>
+            <option>Sale</option>
+            <option>Purchase</option>
+            <option>Return</option>
+            <option>Adjustment</option>
+          </select>
+
+          <div className="transaction-date-filter">
+            <label>
+              From
+            </label>
+
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(event) =>
+                setFromDate(
+                  event.target.value,
+                )
+              }
+            />
+          </div>
+
+          <div className="transaction-date-filter">
+            <label>
+              To
+            </label>
+
+            <input
+              type="date"
+              value={toDate}
+              onChange={(event) =>
+                setToDate(
+                  event.target.value,
+                )
+              }
+            />
+          </div>
+
+          {hasFilters && (
+            <button
+              className="filter-button"
+              onClick={clearFilters}
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Transaction ID</th>
+                <th>
+                  Transaction ID
+                </th>
+
                 <th>Product</th>
+
                 <th>Type</th>
+
                 <th>Quantity</th>
+
                 <th>Price</th>
+
                 <th>Total</th>
+
                 <th>Date</th>
+
                 <th>User</th>
               </tr>
             </thead>
@@ -2461,94 +3105,177 @@ function TransactionsPage({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8}>Loading transactions...</td>
+                  <td colSpan={8}>
+                    Loading transactions...
+                  </td>
                 </tr>
-              ) : recentTransactions.length === 0 ? (
+              ) : visibleTransactions.length ===
+                0 ? (
                 <tr>
-                  <td colSpan={8}>No transactions found.</td>
+                  <td colSpan={8}>
+                    No transactions found.
+                  </td>
                 </tr>
               ) : (
-                recentTransactions.map((transaction) => {
-                  const product = productMap.get(transaction.product_id);
-                  const type = getTransactionType(transaction.type);
+                visibleTransactions.map(
+                  (transaction) => {
+                    const product =
+                      productMap.get(
+                        transaction.product_id,
+                      );
 
-                  return (
-                    <tr key={transaction.id}>
-                      <td className="mono">{transaction.id}</td>
+                    const type =
+                      getTransactionType(
+                        transaction.type,
+                      );
 
-                      <td>
-                        <div className="product-cell">
-                          <div className="product-thumb">
-                            <Package size={15} />
+                    return (
+                      <tr
+                        key={
+                          transaction.id
+                        }
+                      >
+                        <td className="mono">
+                          {transaction.id}
+                        </td>
+
+                        <td>
+                          <div className="product-cell">
+                            <div className="product-thumb">
+                              <Package
+                                size={15}
+                              />
+                            </div>
+
+                            <div>
+                              <strong>
+                                {product?.name ||
+                                  `Product #${transaction.product_id}`}
+                              </strong>
+
+                              <span>
+                                {product?.sku ||
+                                  "N/A"}
+                              </span>
+                            </div>
                           </div>
+                        </td>
 
-                          <div>
-                            <strong>
-                              {product?.name || `Product #${transaction.product_id}`}
-                            </strong>
+                        <td>
+                          <span
+                            className={`transaction-badge ${transactionClasses[type]}`}
+                          >
+                            {type}
+                          </span>
+                        </td>
 
-                            <span>
-                              {product?.sku || "N/A"}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
+                        <td>
+                          {transaction.quantity >
+                          0
+                            ? "+"
+                            : ""}
 
-                      <td>
-                        <span
-                          className={`transaction-badge ${transactionClasses[type]}`}
-                        >
-                          {type}
-                        </span>
-                      </td>
+                          {
+                            transaction.quantity
+                          }
+                        </td>
 
-                      <td>
-                        {transaction.quantity > 0 ? "+" : ""}
-                        {transaction.quantity}
-                      </td>
-
-                      <td>
-                        ${transaction.unit_price.toFixed(2)}
-                      </td>
-
-                      <td>
-                        <strong>
+                        <td>
                           $
-                          {Math.abs(transaction.total_amount).toLocaleString(
-                            undefined,
-                            {
-                              maximumFractionDigits: 2,
-                            },
+                          {transaction.unit_price.toFixed(
+                            2,
                           )}
-                        </strong>
-                      </td>
+                        </td>
 
-                      <td className="table-muted">
-                        {transaction.transaction_date}
-                      </td>
+                        <td>
+                          <strong>
+                            $
+                            {Math.abs(
+                              transaction.total_amount,
+                            ).toLocaleString(
+                              undefined,
+                              {
+                                maximumFractionDigits: 2,
+                              },
+                            )}
+                          </strong>
+                        </td>
 
-                      <td>
-                        {transaction.user_id
-                          ? `User #${transaction.user_id}`
-                          : "Dataset"}
-                      </td>
-                    </tr>
-                  );
-                })
+                        <td className="table-muted">
+                          {
+                            transaction.transaction_date
+                          }
+                        </td>
+
+                        <td>
+                          {transaction.user_id
+                            ? `User #${transaction.user_id}`
+                            : "Dataset"}
+                        </td>
+                      </tr>
+                    );
+                  },
+                )
               )}
             </tbody>
           </table>
 
           <div className="table-footer">
             <span>
-              Showing {recentTransactions.length} of{" "}
-              {totalTransactions.toLocaleString()}
+              Showing {startItem}–
+              {endItem} of{" "}
+              {filteredTransactions.length.toLocaleString()}
             </span>
 
             <div>
-              <button disabled>Previous</button>
-              <button className="page-active">1</button>
-              <button disabled>Next</button>
+              <button
+                disabled={
+                  currentPage === 1
+                }
+                onClick={() =>
+                  goToPage(
+                    currentPage - 1,
+                  )
+                }
+              >
+                Previous
+              </button>
+
+              {Array.from(
+                {
+                  length: totalPages,
+                },
+                (_, index) =>
+                  index + 1,
+              ).map((page) => (
+                <button
+                  key={page}
+                  className={
+                    currentPage === page
+                      ? "page-active"
+                      : ""
+                  }
+                  onClick={() =>
+                    goToPage(page)
+                  }
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                disabled={
+                  currentPage ===
+                  totalPages
+                }
+                onClick={() =>
+                  goToPage(
+                    currentPage + 1,
+                  )
+                }
+              >
+                Next
+              </button>
             </div>
           </div>
         </div>
@@ -2589,6 +3316,10 @@ function AnalyticsPage() {
   const [productData, setProductData] = useState<BackendProduct[]>([]);
   const [categoryData, setCategoryData] = useState<BackendCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [analyticsRange, setAnalyticsRange] =
+  useState<"Full dataset" | "Last 90 days" | "Last 30 days">(
+    "Full dataset",
+  );
 
   useEffect(() => {
     async function loadAnalyticsData() {
@@ -2620,9 +3351,48 @@ function AnalyticsPage() {
     productData.map((product) => [product.id, product]),
   );
 
-  const salesTransactions = transactionData.filter(
-    (transaction) => transaction.type.toLowerCase() === "sale",
-  );
+  const allSalesTransactions = transactionData.filter(
+  (transaction) =>
+    transaction.type.toLowerCase() === "sale",
+);
+
+const latestDatasetDate =
+  allSalesTransactions.length > 0
+    ? Math.max(
+        ...allSalesTransactions.map((transaction) =>
+          new Date(
+            transaction.transaction_date,
+          ).getTime(),
+        ),
+      )
+    : 0;
+
+const rangeDays =
+  analyticsRange === "Last 30 days"
+    ? 30
+    : analyticsRange === "Last 90 days"
+      ? 90
+      : null;
+
+const rangeStartDate =
+  rangeDays !== null && latestDatasetDate
+    ? latestDatasetDate -
+      (rangeDays - 1) *
+        24 *
+        60 *
+        60 *
+        1000
+    : null;
+
+const salesTransactions =
+  rangeStartDate !== null
+    ? allSalesTransactions.filter(
+        (transaction) =>
+          new Date(
+            transaction.transaction_date,
+          ).getTime() >= rangeStartDate,
+      )
+    : allSalesTransactions;
 
   const trendMap = new Map<
     string,
@@ -3024,13 +3794,24 @@ function ForecastingPage() {
     reorder_level: number;
   };
 
-  const [transactionData, setTransactionData] = useState<BackendTransaction[]>([]);
+  type ForecastRange = 7 | 30 | 90;
+
+  const [transactionData, setTransactionData] = useState<
+    BackendTransaction[]
+  >([]);
+
   const [productData, setProductData] = useState<BackendProduct[]>([]);
+
   const [loading, setLoading] = useState(true);
+
+  const [forecastRange, setForecastRange] =
+    useState<ForecastRange>(7);
 
   useEffect(() => {
     async function loadForecastData() {
       try {
+        setLoading(true);
+
         const [transactions, products] = await Promise.all([
           apiGet<BackendTransaction[]>("/transactions"),
           apiGet<BackendProduct[]>("/products"),
@@ -3039,7 +3820,10 @@ function ForecastingPage() {
         setTransactionData(transactions);
         setProductData(products);
       } catch (error) {
-        console.error("Failed to load forecasting data:", error);
+        console.error(
+          "Failed to load forecasting data:",
+          error,
+        );
       } finally {
         setLoading(false);
       }
@@ -3049,23 +3833,28 @@ function ForecastingPage() {
   }, []);
 
   const salesTransactions = transactionData.filter(
-    (transaction) => transaction.type.toLowerCase() === "sale",
+    (transaction) =>
+      transaction.type.toLowerCase() === "sale",
   );
 
   const dailySalesMap = new Map<string, number>();
 
   salesTransactions.forEach((transaction) => {
-    const date = transaction.transaction_date?.split(" ")[0];
+    const date =
+      transaction.transaction_date?.split(" ")[0];
 
     if (!date) return;
 
     dailySalesMap.set(
       date,
-      (dailySalesMap.get(date) || 0) + Math.abs(transaction.quantity),
+      (dailySalesMap.get(date) || 0) +
+        Math.abs(transaction.quantity),
     );
   });
 
-  const sortedDates = Array.from(dailySalesMap.keys()).sort();
+  const sortedDates = Array.from(
+    dailySalesMap.keys(),
+  ).sort();
 
   const recentDates = sortedDates.slice(-7);
 
@@ -3079,48 +3868,77 @@ function ForecastingPage() {
 
   const averageDailyDemand =
     recentDailySales.length > 0
-      ? recentDailySales.reduce((sum, item) => sum + item.sales, 0) /
-        recentDailySales.length
+      ? recentDailySales.reduce(
+          (sum, item) => sum + item.sales,
+          0,
+        ) / recentDailySales.length
       : 0;
 
   const previousAverage =
     sortedDates.length >= 14
       ? sortedDates
           .slice(-14, -7)
-          .reduce((sum, date) => sum + (dailySalesMap.get(date) || 0), 0) / 7
+          .reduce(
+            (sum, date) =>
+              sum + (dailySalesMap.get(date) || 0),
+            0,
+          ) / 7
       : averageDailyDemand;
 
   const demandChange =
     previousAverage > 0
-      ? ((averageDailyDemand - previousAverage) / previousAverage) * 100
+      ? ((averageDailyDemand - previousAverage) /
+          previousAverage) *
+        100
       : 0;
+
+  /*
+   * ---------------------------------------------------------
+   * FORECAST DATA
+   * ---------------------------------------------------------
+   */
 
   const forecastData = [
     ...recentDailySales.map((item) => ({
       day: item.day,
       historical: item.sales,
-      predicted: undefined,
-      upper: undefined,
-      lower: undefined,
+      predicted: undefined as number | undefined,
+      upper: undefined as number | undefined,
+      lower: undefined as number | undefined,
     })),
-    ...Array.from({ length: 7 }, (_, index) => {
-      const predicted = Math.max(
-        0,
-        Math.round(
-          averageDailyDemand *
-            (1 + (demandChange / 100) * ((index + 1) / 7)),
-        ),
-      );
 
-      return {
-        day: `Day ${index + 1}`,
-        historical: undefined,
-        predicted,
-        upper: Math.round(predicted * 1.2),
-        lower: Math.max(0, Math.round(predicted * 0.8)),
-      };
-    }),
+    ...Array.from(
+      { length: forecastRange },
+      (_, index) => {
+        const predicted = Math.max(
+          0,
+          Math.round(
+            averageDailyDemand *
+              (1 +
+                (demandChange / 100) *
+                  ((index + 1) / forecastRange)),
+          ),
+        );
+
+        return {
+          day: `Day ${index + 1}`,
+          historical: undefined as number | undefined,
+          predicted,
+          upper: Math.round(predicted * 1.2),
+          lower: Math.max(
+            0,
+            Math.round(predicted * 0.8),
+          ),
+        };
+      },
+    ),
   ];
+
+  /*
+   * ---------------------------------------------------------
+   * PRODUCT SALES
+   * ---------------------------------------------------------
+   */
 
   const productSalesMap = new Map<number, number>();
 
@@ -3137,22 +3955,34 @@ function ForecastingPage() {
       ? Math.max(
           1,
           Math.ceil(
-            (new Date(sortedDates[sortedDates.length - 1]).getTime() -
+            (new Date(
+              sortedDates[sortedDates.length - 1],
+            ).getTime() -
               new Date(sortedDates[0]).getTime()) /
               (1000 * 60 * 60 * 24),
           ) + 1,
         )
       : 1;
 
+  /*
+   * ---------------------------------------------------------
+   * REORDER INTELLIGENCE
+   * ---------------------------------------------------------
+   */
+
   const reorderProducts = productData
     .map((product) => {
-      const totalProductSales = productSalesMap.get(product.id) || 0;
+      const totalProductSales =
+        productSalesMap.get(product.id) || 0;
 
-      const dailyDemand = totalProductSales / totalDays;
+      const dailyDemand =
+        totalProductSales / totalDays;
 
       const predictedDemand = Math.max(
         1,
-        Math.round(dailyDemand * 7),
+        Math.round(
+          dailyDemand * forecastRange,
+        ),
       );
 
       const daysOfCoverage =
@@ -3164,12 +3994,18 @@ function ForecastingPage() {
         product.current_stock <= 0
           ? "At risk now"
           : daysOfCoverage <= 7
-            ? `${Math.max(1, Math.round(daysOfCoverage))} days`
+            ? `${Math.max(
+                1,
+                Math.round(daysOfCoverage),
+              )} days`
             : "Low risk";
 
       const suggestedOrder = Math.max(
         0,
-        Math.ceil(dailyDemand * 14 - product.current_stock),
+        Math.ceil(
+          dailyDemand * 14 -
+            product.current_stock,
+        ),
       );
 
       return {
@@ -3182,35 +4018,151 @@ function ForecastingPage() {
     })
     .filter(
       (item) =>
-        item.product.current_stock <= item.product.reorder_level ||
+        item.product.current_stock <=
+          item.product.reorder_level ||
         item.daysOfCoverage <= 14,
     )
-    .sort((a, b) => a.daysOfCoverage - b.daysOfCoverage)
+    .sort(
+      (a, b) =>
+        a.daysOfCoverage -
+        b.daysOfCoverage,
+    )
     .slice(0, 4);
 
-  const predictedSevenDayDemand = Math.round(
-    averageDailyDemand * 7,
+  /*
+   * ---------------------------------------------------------
+   * SUMMARY VALUES
+   * ---------------------------------------------------------
+   */
+
+  const predictedDemand = Math.round(
+    averageDailyDemand * forecastRange,
   );
 
-  const totalCurrentStock = productData.reduce(
-    (sum, product) => sum + product.current_stock,
-    0,
+  const previousPeriodDemand = Math.round(
+    previousAverage * forecastRange,
   );
+
+  const forecastChange =
+    previousPeriodDemand > 0
+      ? ((predictedDemand -
+          previousPeriodDemand) /
+          previousPeriodDemand) *
+        100
+      : 0;
+
+  const totalCurrentStock =
+    productData.reduce(
+      (sum, product) =>
+        sum + product.current_stock,
+      0,
+    );
 
   const expectedStockCoverage =
     averageDailyDemand > 0
-      ? Math.round(totalCurrentStock / averageDailyDemand)
+      ? Math.round(
+          totalCurrentStock /
+            averageDailyDemand,
+        )
       : 0;
 
-  const atRiskProducts = productData.filter((product) => {
-    const totalProductSales = productSalesMap.get(product.id) || 0;
-    const dailyDemand = totalProductSales / totalDays;
+  const atRiskProducts =
+    productData.filter((product) => {
+      const totalProductSales =
+        productSalesMap.get(product.id) || 0;
 
-    return (
-      product.current_stock <= 0 ||
-      (dailyDemand > 0 && product.current_stock / dailyDemand <= 7)
+      const dailyDemand =
+        totalProductSales / totalDays;
+
+      return (
+        product.current_stock <= 0 ||
+        (dailyDemand > 0 &&
+          product.current_stock /
+            dailyDemand <= 7)
+      );
+    }).length;
+
+  /*
+   * ---------------------------------------------------------
+   * CREATE PURCHASE ORDER
+   * ---------------------------------------------------------
+   */
+
+  const createPurchaseOrder = () => {
+    if (reorderProducts.length === 0) {
+      alert(
+        "No products currently require reordering.",
+      );
+      return;
+    }
+
+    const header = [
+      "Product",
+      "SKU",
+      "Current Stock",
+      "Predicted Demand",
+      "Suggested Order",
+      "Supplier",
+    ];
+
+    const rows = reorderProducts.map(
+      (item) => [
+        item.product.name,
+        item.product.sku,
+        item.product.current_stock,
+        item.predictedDemand,
+        item.suggestedOrder,
+        "N/A",
+      ],
     );
-  }).length;
+
+    const csvContent = [
+      header,
+      ...rows,
+    ]
+      .map((row) =>
+        row
+          .map((value) =>
+            `"${String(value).replace(
+              /"/g,
+              '""',
+            )}"`,
+          )
+          .join(","),
+      )
+      .join("\n");
+
+    const blob = new Blob(
+      [csvContent],
+      {
+        type: "text/csv;charset=utf-8;",
+      },
+    );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = url;
+
+    link.download = `InventoryIQ_Purchase_Order_${forecastRange}Days.csv`;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  };
+
+  /*
+   * ---------------------------------------------------------
+   * UI
+   * ---------------------------------------------------------
+   */
 
   return (
     <div className="page">
@@ -3220,9 +4172,44 @@ function ForecastingPage() {
         subtitle="A forward view of demand, stock coverage, and risk."
         action={
           <div className="chart-tabs page-tabs">
-            <button className="selected">7 days</button>
-            <button>30 days</button>
-            <button>90 days</button>
+            <button
+              className={
+                forecastRange === 7
+                  ? "selected"
+                  : ""
+              }
+              onClick={() =>
+                setForecastRange(7)
+              }
+            >
+              7 days
+            </button>
+
+            <button
+              className={
+                forecastRange === 30
+                  ? "selected"
+                  : ""
+              }
+              onClick={() =>
+                setForecastRange(30)
+              }
+            >
+              30 days
+            </button>
+
+            <button
+              className={
+                forecastRange === 90
+                  ? "selected"
+                  : ""
+              }
+              onClick={() =>
+                setForecastRange(90)
+              }
+            >
+              90 days
+            </button>
           </div>
         }
       />
@@ -3233,19 +4220,28 @@ function ForecastingPage() {
         </div>
 
         <div>
-          <strong>Demand forecast calculated</strong>
+          <strong>
+            Demand forecast calculated
+          </strong>
+
           <p>
-            Forecast is calculated from historical sales in the public
+            Forecast is calculated from
+            historical sales in the public
             inventory dataset.
           </p>
         </div>
 
-        <span className="preview-pill">Dataset-based</span>
+        <span className="preview-pill">
+          Dataset-based
+        </span>
       </div>
 
       {loading ? (
         <Card title="Loading forecast">
-          <p>Loading historical sales and inventory data...</p>
+          <p>
+            Loading historical sales and
+            inventory data...
+          </p>
         </Card>
       ) : (
         <>
@@ -3272,8 +4268,13 @@ function ForecastingPage() {
               </div>
 
               <div className="large-chart">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={forecastData}>
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
+                  <AreaChart
+                    data={forecastData}
+                  >
                     <defs>
                       <linearGradient
                         id="confidence"
@@ -3287,6 +4288,7 @@ function ForecastingPage() {
                           stopColor="#a878f6"
                           stopOpacity={0.16}
                         />
+
                         <stop
                           offset="100%"
                           stopColor="#a878f6"
@@ -3302,21 +4304,29 @@ function ForecastingPage() {
 
                     <XAxis
                       dataKey="day"
-                      tick={{ fill: "#8390a5", fontSize: 10 }}
+                      tick={{
+                        fill: "#8390a5",
+                        fontSize: 10,
+                      }}
                       tickLine={false}
                       axisLine={false}
                     />
 
                     <YAxis
-                      tick={{ fill: "#8390a5", fontSize: 10 }}
+                      tick={{
+                        fill: "#8390a5",
+                        fontSize: 10,
+                      }}
                       tickLine={false}
                       axisLine={false}
                     />
 
                     <Tooltip
                       contentStyle={{
-                        background: "#111a27",
-                        border: "1px solid #2a394e",
+                        background:
+                          "#111a27",
+                        border:
+                          "1px solid #2a394e",
                         borderRadius: 10,
                       }}
                     />
@@ -3358,36 +4368,53 @@ function ForecastingPage() {
 
             <div className="forecast-side">
               <div className="forecast-stat">
-                <span>Predicted demand</span>
+                <span>
+                  Predicted demand
+                </span>
 
                 <strong>
-                  {predictedSevenDayDemand.toLocaleString()} units
+                  {predictedDemand.toLocaleString()}{" "}
+                  units
                 </strong>
 
                 <small className="positive">
                   <ArrowUpRight size={13} />
-                  {demandChange >= 0 ? "+" : ""}
-                  {demandChange.toFixed(1)}% vs previous period
+
+                  {forecastChange >= 0
+                    ? "+"
+                    : ""}
+                  {forecastChange.toFixed(1)}%
+                  {" "}vs previous period
                 </small>
               </div>
 
               <div className="forecast-stat">
-                <span>Expected stock coverage</span>
+                <span>
+                  Expected stock coverage
+                </span>
 
                 <strong>
-                  {expectedStockCoverage.toLocaleString()} days
+                  {expectedStockCoverage.toLocaleString()}{" "}
+                  days
                 </strong>
 
-                <small>Across all tracked products</small>
+                <small>
+                  Across all tracked products
+                </small>
               </div>
 
               <div className="forecast-stat danger">
-                <span>Stockout risk</span>
+                <span>
+                  Stockout risk
+                </span>
 
-                <strong>{atRiskProducts} products</strong>
+                <strong>
+                  {atRiskProducts} products
+                </strong>
 
                 <small>
-                  Based on current stock and historical demand
+                  Based on current stock and
+                  historical demand
                 </small>
               </div>
             </div>
@@ -3396,7 +4423,12 @@ function ForecastingPage() {
           <Card
             title="Reorder intelligence"
             action={
-              <button className="primary-button">
+              <button
+                className="primary-button"
+                onClick={
+                  createPurchaseOrder
+                }
+              >
                 <Plus size={15} />
                 Create purchase order
               </button>
@@ -3412,49 +4444,65 @@ function ForecastingPage() {
                 <span>Supplier</span>
               </div>
 
-              {reorderProducts.map((item) => (
-                <div
-                  className="reorder-row"
-                  key={item.product.id}
-                >
-                  <div className="product-cell">
-                    <div className="product-thumb">
-                      <Package size={15} />
-                    </div>
-
-                    <div>
-                      <strong>{item.product.name}</strong>
-                      <span>{item.product.sku}</span>
-                    </div>
-                  </div>
-
-                  <strong>{item.product.current_stock}</strong>
-
-                  <span>
-                    {item.predictedDemand.toLocaleString()}
-                  </span>
-
-                  <span
-                    className={
-                      item.stockoutRisk === "Low risk"
-                        ? "positive"
-                        : "negative"
-                    }
+              {reorderProducts.map(
+                (item) => (
+                  <div
+                    className="reorder-row"
+                    key={item.product.id}
                   >
-                    {item.stockoutRisk}
-                  </span>
+                    <div className="product-cell">
+                      <div className="product-thumb">
+                        <Package size={15} />
+                      </div>
 
-                  <strong>
-                    {item.suggestedOrder.toLocaleString()}
-                  </strong>
+                      <div>
+                        <strong>
+                          {item.product.name}
+                        </strong>
 
-                  <span>N/A</span>
-                </div>
-              ))}
+                        <span>
+                          {item.product.sku}
+                        </span>
+                      </div>
+                    </div>
 
-              {reorderProducts.length === 0 && (
+                    <strong>
+                      {item.product.current_stock}
+                    </strong>
+
+                    <span>
+                      {item.predictedDemand.toLocaleString()}
+                    </span>
+
+                    <span
+                      className={
+                        item.stockoutRisk ===
+                        "Low risk"
+                          ? "positive"
+                          : "negative"
+                      }
+                    >
+                      {item.stockoutRisk}
+                    </span>
+
+                    <strong>
+                      {item.suggestedOrder.toLocaleString()}
+                    </strong>
+
+                    <span>
+                      N/A
+                    </span>
+                  </div>
+                ),
+              )}
+
+              {reorderProducts.length ===
+                0 && (
                 <div className="reorder-row">
-                  <span>No products currently require reordering.</span>
+                  <span>
+                    No products currently
+                    require reordering.
+                  </span>
                 </div>
               )}
             </div>
@@ -3464,6 +4512,7 @@ function ForecastingPage() {
     </div>
   );
 }
+
 
 function AlertsPage({
   showToast,

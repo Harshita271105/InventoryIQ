@@ -1059,3 +1059,180 @@ select option {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ---------------------------------------------------------
+   PRODUCT CARD MENU
+--------------------------------------------------------- */
+
+.product-menu-wrapper {
+  position: relative;
+}
+
+.product-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 150px;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.35);
+  z-index: 30;
+}
+
+.product-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.product-menu button:hover {
+  background: rgba(72, 213, 151, 0.08);
+}
+
+.product-menu button svg {
+  color: var(--green);
+}
+
+/* ---------------------------------------------------------
+   PRODUCT DETAILS MODAL
+--------------------------------------------------------- */
+
+.product-details-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(3, 8, 14, 0.72);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+}
+
+.product-details-modal {
+  width: min(560px, 100%);
+  padding: 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5);
+}
+
+.product-details-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.product-details-header span {
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.product-details-header h2 {
+  margin: 5px 0 0;
+  color: var(--text);
+  font-size: 20px;
+}
+
+.product-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.product-details-grid > div {
+  padding: 13px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+}
+
+.product-details-grid small {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.product-details-grid strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------
+   TRANSACTION FILTERS
+--------------------------------------------------------- */
+
+.transaction-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.transaction-filters .table-search {
+  min-width: 260px;
+  flex: 1;
+}
+
+.transaction-filters select {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.transaction-filters select option {
+  background: var(--card);
+  color: var(--text);
+}
+
+.transaction-date-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.transaction-date-filter label {
+  color: var(--text-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.transaction-date-filter input {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.transaction-date-filter input::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
