@@ -2,17 +2,17 @@
 
 ### Smart Inventory Management & Analytics Platform
 
-> A data-driven inventory management system for monitoring stock, analyzing sales activity, identifying inventory risks, and supporting smarter replenishment decisions.
+> A full-stack, data-driven inventory management system for monitoring stock, analyzing sales activity, identifying inventory risks, and supporting smarter replenishment decisions.
 
 ---
 
 ## 🚀 About the Project
 
-**InventoryIQ** is a full-stack inventory management platform that combines a modern React dashboard with a Flask REST API and SQLite database.
+**InventoryIQ** is a full-stack inventory management platform built with a React + TypeScript frontend, a Python Flask REST API, and a SQLite database.
 
-The system uses a **public retail inventory dataset** to provide realistic inventory records, historical sales transactions, stock-level analysis, category analytics, forecasting insights, alerts, and downloadable reports.
+The application uses a public retail inventory dataset to provide realistic inventory records, historical transactions, stock-level analysis, category analytics, demand-based forecasting, alerts, supplier management, and downloadable reports.
 
-The goal is to transform raw inventory data into **clear, actionable information** that can help businesses identify stock problems and make better inventory decisions.
+The goal is to transform raw inventory data into **clear, actionable information** that helps users understand inventory health and identify products that may require attention.
 
 ---
 
@@ -20,84 +20,70 @@ The goal is to transform raw inventory data into **clear, actionable information
 
 | Feature | Description |
 |---|---|
-| 📊 **Overview Dashboard** | Centralized view of inventory health, stock status, inventory value and activity |
-| 📦 **Inventory Management** | Monitor current stock, reorder levels and inventory value |
-| 🛍️ **Product Management** | View and manage the product catalog |
-| 💳 **Transaction Tracking** | Analyze historical sales transactions |
-| 📈 **Analytics** | Category-wise inventory value and sales activity analysis |
-| 🔮 **Forecasting** | Estimate demand and identify potential stockout risks |
-| 🚨 **Smart Alerts** | Detect low-stock and potential stockout situations |
-| 📋 **Reports** | Generate downloadable CSV inventory and sales reports |
-| 🔎 **Search** | Search products, SKUs and transactions |
-| 🌐 **REST API** | Frontend communicates with a Flask backend through API endpoints |
+| 📊 **Overview Dashboard** | Centralized view of inventory health, stock status, inventory value, and recent activity |
+| 📦 **Inventory Management** | Monitor stock levels, reorder levels, inventory value, and stock conditions |
+| 🛍️ **Product Management** | View, add, edit, search, filter, and delete products through the backend |
+| 💳 **Transaction Tracking** | View and analyze historical inventory transactions |
+| 📈 **Analytics** | Analyze sales activity, inventory value, category distribution, and product movement |
+| 🔮 **Forecasting** | Estimate short-term demand, stock coverage, and potential stockout risk |
+| 🚨 **Smart Alerts** | Identify out-of-stock, low-stock, and potential stockout-risk conditions |
+| 🚚 **Supplier Management** | Add and manage supplier records and view supplier reliability information |
+| 📋 **Reports** | Generate and download CSV reports for supported inventory and transaction data |
+| 🔎 **Search & Filtering** | Search and filter products, inventory, and transactions |
+| 🌗 **Theme Support** | Switch between dark and light interface themes |
+| ⚙️ **Settings & Help** | Workspace settings, system information, and in-app support guidance |
+| 🌐 **REST API** | React frontend communicates with the Flask backend through API endpoints |
 
 ---
 
-# 🏗️ System Architecture
+## 🏗️ System Architecture
 
 ```text
-                    ┌─────────────────────────┐
-                    │     Public Dataset      │
-                    │   Retail Inventory CSV  │
-                    └────────────┬────────────┘
-                                 │
-                                 ▼
-                    ┌─────────────────────────┐
-                    │    Dataset Importer     │
-                    │      Python Script       │
-                    └────────────┬────────────┘
-                                 │
-                                 ▼
-                    ┌─────────────────────────┐
-                    │      SQLite Database    │
-                    │                         │
-                    │  Products               │
-                    │  Categories             │
-                    │  Transactions           │
-                    │  Stock History          │
-                    └────────────┬────────────┘
-                                 │
-                                 ▼
-                    ┌─────────────────────────┐
-                    │      Flask REST API      │
-                    │                         │
-                    │  /products              │
-                    │  /categories            │
-                    │  /transactions           │
-                    └────────────┬────────────┘
-                                 │
-                                 ▼
-              ┌────────────────────────────────────┐
-              │       React + TypeScript UI        │
-              │                                    │
-              │  Overview   Inventory   Products   │
-              │  Transactions   Analytics          │
-              │  Forecasting   Alerts   Reports    │
-              └────────────────────────────────────┘
+                  Public Retail Dataset
+                           │
+                           ▼
+                  Python Dataset Importer
+                           │
+                           ▼
+                    SQLite Database
+                           │
+                           ▼
+                     Flask REST API
+                           │
+                           ▼
+                 React + TypeScript UI
+                           │
+            ┌──────────────┼──────────────┐
+            ▼              ▼              ▼
+        Analytics      Forecasting      Reports
+            │              │              │
+            └──────────────┼──────────────┘
+                           ▼
+                     Inventory Insights
 ```
 
 ---
 
-# 🔄 Data Flow
+## 🔄 Data Flow
 
 ```text
-CSV Dataset
-     ↓
+Retail Inventory CSV
+        ↓
 Python Data Import
-     ↓
+        ↓
 Data Cleaning & Transformation
-     ↓
+        ↓
 SQLite Storage
-     ↓
+        ↓
 Flask REST API
-     ↓
+        ↓
 React Frontend
-     ↓
+        ↓
 Calculations & Analytics
-     ↓
+        ↓
 Dashboard Insights
-     ↓
-Reports / Alerts / Forecasts
+        ↓
+Reports / Alerts / Forecasting
 ```
 
 ---
@@ -105,6 +91,10 @@ Reports / Alerts / Forecasts
 # 📊 Dataset
 
 InventoryIQ uses the publicly available **Retail Store Inventory Forecasting Dataset** from Kaggle.
+
+Dataset source:
+
+**https://www.kaggle.com/datasets/anirudhchauhan/retail-store-inventory-forecasting-dataset**
 
 The source dataset contains retail inventory records with information such as:
 
@@ -131,21 +121,21 @@ The source dataset contains retail inventory records with information such as:
 | Inventory records | **73,100** |
 | Unique products | **100** |
 | Categories | **5** |
-| Sales transactions | **72,740** |
 | Stores | **5** |
-| Dataset period | **2022** |
+| Imported transaction records | **72,740** |
+| Dataset period | **2022-01-01 to 2024-01-01** |
 
 ### Product Categories
 
-The dataset contains:
+The dataset contains five categories:
 
-- 👕 Clothing
-- 💻 Electronics
-- 🪑 Furniture
-- 🛒 Groceries
-- 🧸 Toys
+- Clothing
+- Electronics
+- Furniture
+- Groceries
+- Toys
 
-> **Note:** The source dataset does not contain individual product names or supplier names. Product labels displayed by InventoryIQ are derived from the available Product ID and Category information.
+> **Note:** The source dataset does not contain individual product names or supplier names. InventoryIQ therefore derives display labels from the available Product ID and Category information rather than inventing source product names.
 
 ---
 
@@ -153,7 +143,7 @@ The dataset contains:
 
 ## 💰 Inventory Value
 
-Inventory value is calculated using the current stock and unit price:
+Inventory value is calculated from current stock and unit price:
 
 ```text
 Inventory Value = Current Stock × Unit Price
@@ -163,7 +153,7 @@ Inventory Value = Current Stock × Unit Price
 
 ## 📦 Stock Classification
 
-Products are classified using their current stock and reorder level.
+InventoryIQ classifies stock conditions using current stock and the configured reorder level.
 
 ```text
 Healthy
@@ -176,38 +166,38 @@ Out of Stock
 Current Stock = 0
 ```
 
-A separate **Critical** category is not calculated from the current dataset because the source data does not define a critical-stock threshold.
+Where a more specific critical threshold is not supported by the source dataset, the application does not present it as a source-derived business rule.
 
 ---
 
-## 🔮 Stockout Risk Estimation
+# 🔮 Forecasting & Stockout Risk
 
-InventoryIQ estimates stockout risk using recent historical sales activity.
+InventoryIQ uses a **rule-based, demand-driven forecasting heuristic** based on recent historical sales activity.
 
-### Step 1 — Calculate recent demand
+### Step 1 — Calculate Recent Demand
 
 ```text
 Average Daily Demand =
 Recent Units Sold ÷ Number of Recent Days
 ```
 
-### Step 2 — Estimate stock coverage
+### Step 2 — Estimate Stock Coverage
 
 ```text
 Stock Coverage =
 Current Stock ÷ Average Daily Demand
 ```
 
-### Step 3 — Identify risk
+### Step 3 — Identify Potential Risk
 
 ```text
 If Stock Coverage ≤ 7 days
 → Product is flagged as potential stockout risk
 ```
 
-This provides a simple, explainable demand-based heuristic for inventory planning.
+This approach is intentionally simple and explainable so users can understand why a product has been flagged.
 
-> ⚠️ The current implementation is a **rule-based forecasting heuristic**, not a machine-learning model.
+> ⚠️ **Important:** The current forecasting implementation is a rule-based heuristic, **not a machine-learning model**.
 
 ---
 
@@ -221,61 +211,68 @@ The Analytics dashboard provides dataset-driven insights including:
 - 🏆 Top-moving products
 - 📦 Inventory health
 - 📉 Historical transaction activity
+- 📅 Selectable analysis ranges
 
-All displayed metrics are calculated from the imported dataset and stored inventory records.
-
----
-
-# 🔮 Forecasting
-
-The Forecasting module uses recent historical sales activity to estimate short-term demand.
-
-It provides:
-
-- Recent demand analysis
-- Estimated 7-day demand
-- Stock coverage
-- Stockout-risk identification
-- Reorder suggestions
-- Products requiring attention
-
-The forecasting approach is intentionally explainable so that inventory decisions can be traced back to historical sales data.
+The displayed metrics are calculated from the imported dataset and stored inventory records.
 
 ---
 
 # 🚨 Smart Alerts
 
-InventoryIQ automatically identifies inventory conditions that require attention.
+InventoryIQ identifies inventory conditions that may require attention.
 
-Current alerts include:
+Current alert categories include:
 
 - 🔴 Out-of-stock products
 - 🟠 Low-stock products
 - 🟡 Potential stockout risks
 - 🔵 Data availability warnings
 
-The alert system uses actual product and transaction information rather than predefined mock values.
+The alert system uses actual product and transaction information from the application's backend and imported dataset rather than predefined mock dashboard values.
+
+---
+
+# 🚚 Supplier Management
+
+InventoryIQ includes a supplier management interface backed by the application's SQLite database.
+
+Users can:
+
+- Add supplier records
+- View supplier information
+- Track reliability information
+- View average delivery information
+- Associate supplier information with the inventory workflow
+
+> The public retail dataset does not provide supplier information, so supplier records entered through the application are application-managed data rather than values sourced from the Kaggle dataset.
 
 ---
 
 # 📋 Reports
 
-InventoryIQ supports CSV report generation for:
+InventoryIQ supports CSV report generation for supported inventory and transaction data.
 
 ### 📦 Inventory Summary
-Provides an overview of products, stock levels and inventory values.
+
+Provides an overview of products, stock levels, and inventory values.
 
 ### 🔄 Stock Movement
+
 Provides stock-related transaction information.
 
 ### 💳 Sales Report
+
 Exports historical sales transaction data.
 
 ### ⚠️ Low Stock Report
-Lists products currently below their reorder level.
+
+Lists products currently below their configured reorder level.
 
 ### 💤 Dead Stock Report
+
 Identifies products with limited recent sales activity based on the available historical dataset.
+
+> Some report types that require business information not present in the source dataset are intentionally shown as unavailable rather than using fabricated values.
 
 ---
 
@@ -286,9 +283,10 @@ Identifies products with limited recent sales activity based on the available hi
 - ⚛️ **React**
 - 📘 **TypeScript**
 - ⚡ **Vite**
-- 🎨 **Tailwind CSS**
+- 🎨 **CSS**
 - 📊 **Recharts**
 - 🧩 **Lucide React**
+- 🎞️ **Framer Motion**
 
 ## Backend
 
@@ -297,11 +295,12 @@ Identifies products with limited recent sales activity based on the available hi
 - 🗄️ **SQLite**
 - 🔗 **Flask-CORS**
 
-## Tools
+## Data & Tools
 
-- 💻 Visual Studio Code
-- 🌱 Git
-- 🐙 GitHub
+- 📊 **CSV / public retail dataset**
+- 💻 **Visual Studio Code**
+- 🌱 **Git**
+- 🐙 **GitHub**
 
 ---
 
@@ -314,6 +313,7 @@ InventoryIQ/
 │   ├── 📂 models/
 │   ├── 📂 routes/
 │   ├── 📂 services/
+│   ├── 📂 utils/
 │   ├── 📄 app.py
 │   ├── 📄 database.py
 │   └── 📄 import_dataset.py
@@ -326,42 +326,60 @@ InventoryIQ/
 │   └── 🗄️ inventory.db
 │
 ├── 📂 src/
-│   ├── 📂 data/
 │   ├── 📄 api.ts
 │   ├── 📄 App.tsx
 │   ├── 📄 index.css
-│   └── 📄 main.tsx
+│   ├── 📄 main.tsx
+│   └── 📄 vite-env.d.ts
 │
 ├── 📄 .gitignore
 ├── 📄 package.json
 ├── 📄 README.md
+├── 📄 postcss.config.js
 └── 📄 vite.config.ts
 ```
+
+> The previous frontend `mockData.ts` file has been removed. The application now relies on backend/API data and the imported dataset.
 
 ---
 
 # 🔌 API Architecture
 
-The React frontend communicates with the Flask backend using REST API endpoints.
+The React frontend communicates with the Flask backend through REST API endpoints.
 
 ### Products
 
 ```text
-GET /api/products
-GET /api/products/<id>
-```
-
-### Categories
-
-```text
-GET /api/categories
+GET    /api/products
+POST   /api/products
+PUT    /api/products/<id>
+DELETE /api/products/<id>
 ```
 
 ### Transactions
 
 ```text
 GET /api/transactions
-GET /api/transactions/<id>
+```
+
+### Inventory
+
+```text
+GET /api/inventory/stock-in
+GET /api/inventory/stock-out
+```
+
+### Search
+
+```text
+GET /api/search
+```
+
+### Exports
+
+```text
+GET /api/export/products
+GET /api/export/transactions
 ```
 
 The API layer separates the frontend interface from the database and backend business logic.
@@ -387,7 +405,7 @@ npm install
 
 ---
 
-## 3️⃣ Create Python Virtual Environment
+## 3️⃣ Create a Python Virtual Environment
 
 ```bash
 python -m venv venv
@@ -403,9 +421,13 @@ venv\Scripts\activate
 
 ## 4️⃣ Install Backend Dependencies
 
+Install the backend requirements used by the project.
+
 ```bash
 pip install flask flask-cors
 ```
+
+If additional packages are required by the local Python environment, install those as well.
 
 ---
 
@@ -419,11 +441,19 @@ python backend/database.py
 
 ## 6️⃣ Import the Dataset
 
+Make sure the dataset is available at:
+
+```text
+data/raw/retail_store_inventory.csv
+```
+
+Then run:
+
 ```bash
 python backend/import_dataset.py
 ```
 
-The import script loads the public dataset into the SQLite database.
+The import script loads the public retail dataset into the SQLite database.
 
 ---
 
@@ -443,7 +473,7 @@ http://127.0.0.1:5000
 
 ## 8️⃣ Start the Frontend
 
-In a separate terminal:
+Open a separate terminal:
 
 ```bash
 npm run dev
@@ -483,7 +513,7 @@ Database Layer
 SQLite
 ```
 
-This separation makes the application easier to maintain, test and extend.
+This separation keeps the frontend, API, business logic, and database responsibilities distinct, making the application easier to maintain and extend.
 
 ---
 
@@ -494,29 +524,30 @@ InventoryIQ was developed with the following goals:
 - Reduce the effort required to monitor inventory.
 - Provide a centralized view of stock conditions.
 - Convert historical inventory data into actionable insights.
-- Identify products that require replenishment.
+- Identify products that may require replenishment.
 - Provide transparent and explainable inventory calculations.
 - Make inventory information easier to understand through visual analytics.
 - Generate useful reports from the underlying data.
+- Demonstrate full-stack integration between a modern frontend and Python backend.
 
 ---
 
 # ⚠️ Data Limitations
 
-The public dataset does not contain sufficient information for certain business metrics.
+The public dataset does not contain sufficient information for some real-world business metrics.
 
-Therefore, InventoryIQ does **not fabricate** the following information:
+InventoryIQ therefore avoids fabricating source data for areas such as:
 
-- ❌ Supplier names
-- ❌ Supplier delivery history
-- ❌ Purchase orders
+- ❌ Supplier information from the source dataset
+- ❌ Supplier delivery history from the source dataset
+- ❌ Real purchase-order history
 - ❌ Product cost
 - ❌ Gross profit
 - ❌ Real-time inventory events
 
-Where the source data does not support a calculation, InventoryIQ displays the metric as unavailable.
+Where the source data does not support a calculation, InventoryIQ either uses application-managed information where appropriate or displays the metric as unavailable.
 
-This keeps the dashboard data-driven and transparent.
+This keeps the system transparent and data-driven.
 
 ---
 
@@ -527,20 +558,19 @@ Potential future improvements include:
 - 🤖 Machine-learning-based demand forecasting
 - 📡 Real-time inventory synchronization
 - 👥 Role-based authentication and authorization
-- 🏢 Supplier management
-- 🚚 Supplier performance tracking
-- 🛒 Purchase order management
+- 🚚 Integration with real supplier data
+- 🛒 Full purchase-order workflow
 - 📦 Automated reorder recommendations
 - 📊 Advanced predictive analytics
 - 🔔 Real-time notifications
 - ☁️ Cloud database integration
-- 📱 Mobile-friendly inventory management
+- 📱 Expanded mobile optimization
 
 ---
 
 # 🌟 Why InventoryIQ?
 
-Traditional inventory monitoring often requires manually checking large amounts of data.
+Traditional inventory monitoring can require manually checking large amounts of stock and transaction data.
 
 InventoryIQ brings the important information together in one place:
 
@@ -564,21 +594,27 @@ Instead of simply storing inventory records, the system helps users **understand
 
 # 📌 Project Status
 
-🟢 **Active Development**
+🟢 **Completed Working Prototype**
 
 Current implementation includes:
 
-- ✅ Dataset integration
+- ✅ Public dataset integration
 - ✅ SQLite database
 - ✅ Flask REST API
-- ✅ React dashboard
+- ✅ React + TypeScript dashboard
 - ✅ Inventory monitoring
+- ✅ Product CRUD operations
 - ✅ Transaction tracking
 - ✅ Analytics
-- ✅ Forecasting
+- ✅ Rule-based forecasting
 - ✅ Smart alerts
+- ✅ Supplier management
 - ✅ CSV reports
+- ✅ Search and filtering
+- ✅ Dark / light theme
+- ✅ Settings and Help & Support pages
 - ✅ Dataset-driven Overview dashboard
+- ✅ GitHub repository
 
 ---
 
@@ -590,4 +626,4 @@ Electronics & Computer Engineering
 
 ---
 
-> ⭐ InventoryIQ — Turning inventory data into actionable insights.
+> ⭐ **InventoryIQ — Turning inventory data into actionable insights.**
