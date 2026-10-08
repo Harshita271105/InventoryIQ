@@ -133,298 +133,299 @@ const backendStatusMap: Record<BackendProduct["status"], InventoryStatus> = {
   OUT_OF_STOCK: "Out of Stock",
 };
 
-function App() {
-  const [activePage, setActivePage] = useState("Overview");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const [quickActionOpen, setQuickActionOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("");
-  const [modal, setModal] = useState<ModalType>(null);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "All statuses" | InventoryStatus
-  >("All statuses");
-  const [toast, setToast] = useState("");
-  const [products, setProducts] = useState<Product[]>([]);
-  const [productsLoading, setProductsLoading] = useState(true);
-
-  const loadProducts = async () => {
-    try {
-      setProductsLoading(true);
-
-      const [backendProducts, categories, suppliers] =
-        await Promise.all([
-          apiGet<BackendProduct[]>("/products"),
-          apiGet<BackendCategory[]>("/categories"),
-          apiGet<BackendSupplier[]>("/suppliers"),
-        ]);
-
-      const categoryMap = new Map(
-        categories.map((category) => [
-          category.id,
-          category.name,
-        ]),
-      );
-
-      const supplierMap = new Map(
-        suppliers.map((supplier) => [
-          supplier.id,
-          supplier.name,
-        ]),
-      );
-
-      const mappedProducts: Product[] =
-        backendProducts.map((product) => ({
-          id: String(product.id),
-          name: product.name,
-          sku: product.sku,
-          category:
-            categoryMap.get(product.category_id ?? -1) ??
-            `Category #${product.category_id ?? "N/A"}`,
-          stock: product.current_stock,
-          reserved: 0,
-          price: product.unit_price,
-          status: backendStatusMap[product.status],
-          supplier:
-            supplierMap.get(product.supplier_id ?? -1) ??
-            `Supplier #${product.supplier_id ?? "N/A"}`,
-          reorderLevel: product.reorder_level,
-          updated: "Dataset",
-        }));
-
-      setProducts(mappedProducts);
-    } catch (error) {
-      console.error("Failed to load products:", error);
-    } finally {
-      setProductsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-  const filteredProducts = useMemo(
-    () =>
-      products.filter((product) => {
-        const matchesSearch =
-          `${product.name} ${product.sku} ${product.category}`
-            .toLowerCase()
-            .includes(search.toLowerCase());
-        const matchesStatus =
-          statusFilter === "All statuses" || product.status === statusFilter;
-        return matchesSearch && matchesStatus;
-      }),
-    [products, search, statusFilter],
-  );
-
-  const showToast = (message: string) => {
-    setToast(message);
-    window.setTimeout(() => setToast(""), 2600);
-  };
-
-const handleAction = (action: string) => {
-  setQuickActionOpen(false);
-
-  if (action === "Add Product") {
-    setModal("product");
-    return;
-  }
-
-  if (action === "Record Transaction") {
-    setModal("transaction");
-    return;
-  }
-
-  if (
-    action === "Forecasting" ||
-    action === "Transactions" ||
-    action === "Inventory" ||
-    action === "Products" ||
-    action === "Analytics" ||
-    action === "Alerts" ||
-    action === "Suppliers" ||
-    action === "Reports" ||
-    action === "Settings"
-  ) {
-    setActivePage(action);
-    setSidebarOpen(false);
-    return;
-  }
-
-  if (action === "Export CSV") {
-    if (products.length === 0) {
-      showToast("No inventory data is available to export.");
-      return;
-    }
-
-    const headers = [
-      "Product ID",
-      "Product Name",
-      "SKU",
-      "Category",
-      "Current Stock",
-      "Unit Price",
-      "Inventory Value",
-      "Reorder Level",
-      "Status",
-      "Supplier",
-    ];
-
-    const rows = products.map((product) => [
-      product.id,
-      product.name,
-      product.sku,
-      product.category,
-      product.stock,
-      product.price.toFixed(2),
-      (product.stock * product.price).toFixed(2),
-      product.reorderLevel,
-      product.status,
-      product.supplier,
-    ]);
-
-    const csvContent = [headers, ...rows]
-      .map((row) =>
-        row
-          .map((value) =>
-            `"${String(value).replace(/"/g, '""')}"`
-          )
-          .join(","),
-      )
-      .join("\n");
-
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = "InventoryIQ_Inventory.csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
-
-    showToast("Inventory CSV downloaded.");
-    return;
-  }
-
-  showToast(`${action} is ready to connect to your Python backend.`);
-};
-
+function SettingsPage() {
   return (
-    <div className={`app-shell ${theme}`}>
-      <div className="ambient ambient-one" />
-      <div className="ambient ambient-two" />
-      <Sidebar
-  activePage={activePage}
-  open={sidebarOpen}
-  theme={theme}
-  onThemeChange={setTheme}
-  onNavigate={(page) => {
-    setActivePage(page);
-    setSidebarOpen(false);
-  }}
-/>
-      <main className="main-content">
-        <Topbar
-  search={search}
-  setSearch={setSearch}
-  onMenu={() => setSidebarOpen(true)}
-  onQuickAction={() =>
-    setQuickActionOpen((open) => !open)
-  }
-/>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activePage}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-          >
-            {activePage === "Overview" && (
-  <Overview
-    onAction={handleAction}
-    totalProducts={products.length}
-  />
-)}
-            {activePage === "Inventory" && (
-              <InventoryPage
-  products={filteredProducts}
-  totalUnits={products.reduce((total, product) => total + product.stock, 0)}
-  inventoryValue={products.reduce(
-  (total, product) => total + product.stock * product.price,
-  0
-)}
-needsAttention={products.filter(
-  (product) =>
-    product.status === "Low Stock" ||
-    product.status === "Critical" ||
-    product.status === "Out of Stock"
-).length}
-  search={search}
-  setSearch={setSearch}
-  statusFilter={statusFilter}
-  setStatusFilter={setStatusFilter}
-                onAction={handleAction}
-              />
-            )}
-            {activePage === "Products" && (
-              <ProductsPage
-                products={filteredProducts}
-                onAction={handleAction}
-              />
-            )}
-            {activePage === "Transactions" && (
-              <TransactionsPage onAction={handleAction} />
-            )}
-            {activePage === "Analytics" && <AnalyticsPage />}
-            {activePage === "Forecasting" && <ForecastingPage />}
-            {activePage === "Alerts" && <AlertsPage showToast={showToast} />}
-            {activePage === "Suppliers" && <SuppliersPage />}
-            {activePage === "Reports" && <ReportsPage showToast={showToast} />}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-      <AnimatePresence>
-        {quickActionOpen && <QuickActionMenu onAction={handleAction} />}
-      </AnimatePresence>
-      <AnimatePresence>
-        {modal && (
-          <Modal
-            type={modal}
-            onClose={() => setModal(null)}
-            onSave={() => {
-              setModal(null);
-              showToast(
-                modal === "product"
-                  ? "Product added to your catalog."
-                  : "Transaction recorded successfully.",
-              );
+    <div className="page">
+      <PageHeader
+        eyebrow="System / Settings"
+        title="Settings"
+        subtitle="Manage your InventoryIQ workspace preferences."
+      />
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(2, minmax(0, 1fr))",
+          gap: "16px",
+        }}
+      >
+        <Card title="Profile">
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div>
+              <span className="settings-label">
+                Name
+              </span>
+              <strong className="settings-value">
+                Admin User
+              </strong>
+            </div>
+
+            <div>
+              <span className="settings-label">
+                Role
+              </span>
+              <strong className="settings-value">
+                Administrator
+              </strong>
+            </div>
+
+            <div>
+              <span className="settings-label">
+                Account status
+              </span>
+              <strong className="settings-value positive">
+                Active
+              </strong>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Inventory rules">
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div>
+              <span className="settings-label">
+                Low stock
+              </span>
+              <strong className="settings-value">
+                Based on reorder level
+              </strong>
+            </div>
+
+            <div>
+              <span className="settings-label">
+                Stockout monitoring
+              </span>
+              <strong className="settings-value">
+                Enabled
+              </strong>
+            </div>
+
+            <div>
+              <span className="settings-label">
+                Forecasting
+              </span>
+              <strong className="settings-value">
+                Dataset-based
+              </strong>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Notifications">
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div>
+              <span className="settings-label">
+                Low stock alerts
+              </span>
+              <strong className="settings-value positive">
+                Enabled
+              </strong>
+            </div>
+
+            <div>
+              <span className="settings-label">
+                Stockout risk alerts
+              </span>
+              <strong className="settings-value positive">
+                Enabled
+              </strong>
+            </div>
+
+            <div>
+              <span className="settings-label">
+                Supplier alerts
+              </span>
+              <strong className="settings-value">
+                Dataset limited
+              </strong>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="System information">
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div>
+              <span className="settings-label">
+                Application
+              </span>
+              <strong className="settings-value">
+                InventoryIQ
+              </strong>
+            </div>
+
+            <div>
+              <span className="settings-label">
+                Database
+              </span>
+              <strong className="settings-value">
+                SQLite
+              </strong>
+            </div>
+
+            <div>
+              <span className="settings-label">
+                Backend
+              </span>
+              <strong className="settings-value">
+                Python + Flask
+              </strong>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+
+function HelpSupportPage({
+  showToast,
+}: {
+  showToast: (message: string) => void;
+}) {
+  return (
+    <div className="page">
+      <PageHeader
+        eyebrow="Support / Help Center"
+        title="Help & Support"
+        subtitle="Find guidance for using your InventoryIQ workspace."
+      />
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(2, minmax(0, 1fr))",
+          gap: "16px",
+        }}
+      >
+        <Card title="Getting started">
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
             }}
-          />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            className="toast"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
           >
-            <span className="toast-icon">
-              <Check size={15} />
-            </span>
-            {toast}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div className="support-item">
+              <strong>
+                Manage products
+              </strong>
+              <span>
+                Add, search, filter and manage
+                inventory products.
+              </span>
+            </div>
+
+            <div className="support-item">
+              <strong>
+                Monitor inventory
+              </strong>
+              <span>
+                Use Inventory and Alerts to
+                identify low-stock and
+                stockout-risk products.
+              </span>
+            </div>
+
+            <div className="support-item">
+              <strong>
+                Analyze performance
+              </strong>
+              <span>
+                Use Analytics and Forecasting
+                to understand inventory trends.
+              </span>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="InventoryIQ features">
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+            }}
+          >
+            <div className="support-item">
+              <strong>
+                Products & Inventory
+              </strong>
+              <span>
+                Product CRUD, stock levels and
+                inventory status.
+              </span>
+            </div>
+
+            <div className="support-item">
+              <strong>
+                Transactions
+              </strong>
+              <span>
+                Search, filter and export
+                transaction records.
+              </span>
+            </div>
+
+            <div className="support-item">
+              <strong>
+                Reports
+              </strong>
+              <span>
+                Export CSV data and generate
+                available reports.
+              </span>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Dataset information">
+          <p
+            style={{
+              color: "var(--text-muted)",
+              fontSize: "13px",
+              lineHeight: 1.7,
+              margin: 0,
+            }}
+          >
+            InventoryIQ uses a public retail
+            inventory dataset for historical
+            inventory and sales analysis.
+            Some supplier and purchase-order
+            information is not available in
+            the source dataset.
+          </p>
+        </Card>
+
+        <Card title="Need help?">
+          <p
+            style={{
+              color: "var(--text-muted)",
+              fontSize: "13px",
+              lineHeight: 1.7,
+              margin: "0 0 16px",
+            }}
+          >
+            For project support, check the
+            available application features
+            or review the project documentation.
+          </p>
+
+          <button
+            className="primary-button"
+            onClick={() =>
+              showToast(
+                "Support information is available in the project documentation.",
+              )
+            }
+          >
+            <CircleHelp size={15} />
+            Contact support
+          </button>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -464,21 +465,32 @@ function Sidebar({
         </button>
       </div>
 
-      <div className="sidebar-section-label">Workspace</div>
+      <div className="sidebar-section-label">
+        Workspace
+      </div>
 
       <nav>
         {navItems.map((item) => {
-          const Icon = iconMap[item.icon as IconName];
+          const Icon =
+            iconMap[item.icon as IconName];
 
           return (
             <button
               key={item.label}
               className={`nav-item ${
-                activePage === item.label ? "active" : ""
+                activePage === item.label
+                  ? "active"
+                  : ""
               }`}
-              onClick={() => onNavigate(item.label)}
+              onClick={() =>
+                onNavigate(item.label)
+              }
             >
-              <Icon size={17} strokeWidth={1.8} />
+              <Icon
+                size={17}
+                strokeWidth={1.8}
+              />
+
               <span>{item.label}</span>
             </button>
           );
@@ -486,20 +498,42 @@ function Sidebar({
       </nav>
 
       <div className="sidebar-footer">
-        <div className="sidebar-section-label">System</div>
+        <div className="sidebar-section-label">
+          System
+        </div>
 
-        <button className="nav-item">
+        <button
+          className={`nav-item ${
+            activePage === "Settings"
+              ? "active"
+              : ""
+          }`}
+          onClick={() =>
+            onNavigate("Settings")
+          }
+        >
           <Settings size={17} />
           <span>Settings</span>
         </button>
 
-        <button className="nav-item">
+        <button
+          className={`nav-item ${
+            activePage === "Help & Support"
+              ? "active"
+              : ""
+          }`}
+          onClick={() =>
+            onNavigate("Help & Support")
+          }
+        >
           <CircleHelp size={17} />
           <span>Help & Support</span>
         </button>
 
         <div className="profile-card">
-          <div className="avatar avatar-photo">AU</div>
+          <div className="avatar avatar-photo">
+            AU
+          </div>
 
           <div>
             <strong>Admin User</strong>
@@ -511,16 +545,28 @@ function Sidebar({
 
         <div className="theme-switch">
           <button
-            className={theme === "dark" ? "theme-active" : ""}
-            onClick={() => onThemeChange("dark")}
+            className={
+              theme === "dark"
+                ? "theme-active"
+                : ""
+            }
+            onClick={() =>
+              onThemeChange("dark")
+            }
           >
             <Zap size={14} />
             Dark
           </button>
 
           <button
-            className={theme === "light" ? "theme-active" : ""}
-            onClick={() => onThemeChange("light")}
+            className={
+              theme === "light"
+                ? "theme-active"
+                : ""
+            }
+            onClick={() =>
+              onThemeChange("light")
+            }
           >
             Light
           </button>
@@ -6736,6 +6782,339 @@ function Modal({
           </>
         )}
       </motion.div>
+    </div>
+  );
+}
+
+function App() {
+  const [activePage, setActivePage] = useState("Overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [quickActionOpen, setQuickActionOpen] = useState(false);
+  const [modal, setModal] = useState<ModalType>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] =
+    useState<"All statuses" | InventoryStatus>("All statuses");
+  const [toast, setToast] = useState("");
+
+  const [theme, setTheme] =
+    useState<"dark" | "light">("dark");
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        setProductsLoading(true);
+
+        const [
+          backendProducts,
+          categories,
+          suppliers,
+        ] = await Promise.all([
+          apiGet<BackendProduct[]>("/products"),
+          apiGet<BackendCategory[]>("/categories"),
+          apiGet<BackendSupplier[]>("/suppliers"),
+        ]);
+
+        const categoryMap = new Map(
+          categories.map((category) => [
+            category.id,
+            category.name,
+          ]),
+        );
+
+        const supplierMap = new Map(
+          suppliers.map((supplier) => [
+            supplier.id,
+            supplier.name,
+          ]),
+        );
+
+        const mappedProducts: Product[] =
+          backendProducts.map((product) => ({
+            id: String(product.id),
+            name: product.name,
+            sku: product.sku,
+
+            category:
+              categoryMap.get(
+                product.category_id ?? -1,
+              ) ??
+              `Category #${
+                product.category_id ?? "N/A"
+              }`,
+
+            stock: product.current_stock,
+            reserved: 0,
+            price: product.unit_price,
+
+            status:
+              backendStatusMap[product.status],
+
+            supplier:
+              supplierMap.get(
+                product.supplier_id ?? -1,
+              ) ??
+              `Supplier #${
+                product.supplier_id ?? "N/A"
+              }`,
+
+            reorderLevel: product.reorder_level,
+            updated: "Just now",
+          }));
+
+        setProducts(mappedProducts);
+      } catch (error) {
+        console.error(
+          "Failed to load products:",
+          error,
+        );
+
+        setProducts([]);
+
+        setToast(
+          "Could not load products from the Python backend.",
+        );
+      } finally {
+        setProductsLoading(false);
+      }
+    }
+
+    loadProducts();
+  }, []);
+
+  const totalProducts = products.length;
+
+const totalUnits = products.reduce(
+  (sum, product) => sum + product.stock,
+  0,
+);
+
+const inventoryValue = products.reduce(
+  (sum, product) =>
+    sum + product.stock * product.price,
+  0,
+);
+
+const needsAttention = products.filter(
+  (product) =>
+    product.status !== "Healthy",
+).length;
+
+  const filteredProducts = useMemo(
+    () =>
+      products.filter((product) => {
+        const matchesSearch =
+          `${product.name} ${product.sku} ${product.category}`
+            .toLowerCase()
+            .includes(search.toLowerCase());
+
+        const matchesStatus =
+          statusFilter === "All statuses" ||
+          product.status === statusFilter;
+
+        return matchesSearch && matchesStatus;
+      }),
+    [products, search, statusFilter],
+  );
+
+  const showToast = (message: string) => {
+    setToast(message);
+
+    window.setTimeout(
+      () => setToast(""),
+      2600,
+    );
+  };
+
+  const handleAction = (action: string) => {
+    setQuickActionOpen(false);
+
+    if (action === "Add Product") {
+      setModal("product");
+    } else if (
+      action === "Record Transaction"
+    ) {
+      setModal("transaction");
+    } else {
+      showToast(
+        `${action} is ready to connect to your Python backend.`,
+      );
+    }
+  };
+
+  return (
+    <div className="app-shell">
+      <div className="ambient ambient-one" />
+      <div className="ambient ambient-two" />
+
+      <Sidebar
+        activePage={activePage}
+        open={sidebarOpen}
+        onNavigate={(page) => {
+          setActivePage(page);
+          setSidebarOpen(false);
+        }}
+        theme={theme}
+        onThemeChange={setTheme}
+      />
+
+      <main className="main-content">
+        <Topbar
+          search={search}
+          setSearch={setSearch}
+          onMenu={() => setSidebarOpen(true)}
+          onQuickAction={() =>
+            setQuickActionOpen(
+              (open) => !open,
+            )
+          }
+        />
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activePage}
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            exit={{
+              opacity: 0,
+              y: -8,
+            }}
+            transition={{
+              duration: 0.2,
+            }}
+          >
+           {activePage === "Overview" && (
+  <Overview
+  onAction={handleAction}
+  totalProducts={totalProducts}
+/>
+)}
+
+            {activePage === "Inventory" && (
+  <InventoryPage
+    products={filteredProducts}
+    totalUnits={totalUnits}
+    inventoryValue={inventoryValue}
+    needsAttention={needsAttention}
+    search={search}
+    setSearch={setSearch}
+    statusFilter={statusFilter}
+    setStatusFilter={setStatusFilter}
+    onAction={handleAction}
+  />
+)}
+
+            {activePage === "Products" && (
+              <ProductsPage
+                products={filteredProducts}
+                onAction={handleAction}
+              />
+            )}
+
+            {activePage === "Transactions" && (
+              <TransactionsPage
+                onAction={handleAction}
+              />
+            )}
+
+            {activePage === "Analytics" && (
+              <AnalyticsPage />
+            )}
+
+            {activePage === "Forecasting" && (
+              <ForecastingPage />
+            )}
+
+            {activePage === "Alerts" && (
+              <AlertsPage
+                showToast={showToast}
+              />
+            )}
+
+            {activePage === "Suppliers" && (
+              <SuppliersPage />
+            )}
+
+            {activePage === "Reports" && (
+              <ReportsPage
+                showToast={showToast}
+              />
+            )}
+
+            {activePage === "Settings" && (
+              <SettingsPage />
+            )}
+
+            {activePage === "Help & Support" && (
+              <HelpSupportPage
+                showToast={showToast}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </main>
+
+      <AnimatePresence>
+        {quickActionOpen && (
+          <QuickActionMenu
+            onAction={handleAction}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {modal && (
+          <Modal
+            type={modal}
+            onClose={() =>
+              setModal(null)
+            }
+            onSave={() => {
+              setModal(null);
+
+              showToast(
+                modal === "product"
+                  ? "Product added to your catalog."
+                  : "Transaction recorded successfully.",
+              );
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            className="toast"
+            initial={{
+              opacity: 0,
+              y: 16,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            exit={{
+              opacity: 0,
+              y: 16,
+            }}
+          >
+            <span className="toast-icon">
+              <Check size={15} />
+            </span>
+
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
