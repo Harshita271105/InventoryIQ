@@ -696,6 +696,8 @@ function Sidebar({
   theme: "dark" | "light";
   onThemeChange: (theme: "dark" | "light") => void;
 }) {
+    const [profileOpen, setProfileOpen] =
+    useState(false);
   return (
     <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
       <div className="brand">
@@ -751,80 +753,134 @@ function Sidebar({
       </nav>
 
       <div className="sidebar-footer">
-        <div className="sidebar-section-label">
-          System
+  <div className="sidebar-section-label">
+    System
+  </div>
+
+  <button
+    className={`nav-item ${
+      activePage === "Settings"
+        ? "active"
+        : ""
+    }`}
+    onClick={() =>
+      onNavigate("Settings")
+    }
+  >
+    <Settings size={17} />
+    <span>Settings</span>
+  </button>
+
+  <button
+    className={`nav-item ${
+      activePage === "Help & Support"
+        ? "active"
+        : ""
+    }`}
+    onClick={() =>
+      onNavigate("Help & Support")
+    }
+  >
+    <CircleHelp size={17} />
+    <span>Help & Support</span>
+  </button>
+
+  <div
+    className="profile-card profile-clickable"
+    onClick={() =>
+      setProfileOpen(
+        (open) => !open,
+      )
+    }
+  >
+    <div className="avatar avatar-photo">
+      AU
+    </div>
+
+    <div>
+      <strong>Admin User</strong>
+      <small>Administrator</small>
+    </div>
+
+    <ChevronDown
+      size={15}
+      style={{
+        transform: profileOpen
+          ? "rotate(180deg)"
+          : "rotate(0deg)",
+        transition:
+          "transform 0.2s",
+      }}
+    />
+  </div>
+
+  {profileOpen && (
+    <div className="profile-popover">
+      <div className="profile-popover-header">
+        <div className="avatar avatar-photo">
+          AU
         </div>
 
-        <button
-          className={`nav-item ${
-            activePage === "Settings"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            onNavigate("Settings")
-          }
-        >
-          <Settings size={17} />
-          <span>Settings</span>
-        </button>
-
-        <button
-          className={`nav-item ${
-            activePage === "Help & Support"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            onNavigate("Help & Support")
-          }
-        >
-          <CircleHelp size={17} />
-          <span>Help & Support</span>
-        </button>
-
-        <div className="profile-card">
-          <div className="avatar avatar-photo">
-            AU
-          </div>
-
-          <div>
-            <strong>Admin User</strong>
-            <small>Administrator</small>
-          </div>
-
-          <ChevronDown size={15} />
-        </div>
-
-        <div className="theme-switch">
-          <button
-            className={
-              theme === "dark"
-                ? "theme-active"
-                : ""
-            }
-            onClick={() =>
-              onThemeChange("dark")
-            }
-          >
-            <Zap size={14} />
-            Dark
-          </button>
-
-          <button
-            className={
-              theme === "light"
-                ? "theme-active"
-                : ""
-            }
-            onClick={() =>
-              onThemeChange("light")
-            }
-          >
-            Light
-          </button>
+        <div>
+          <strong>Admin User</strong>
+          <span>Administrator</span>
         </div>
       </div>
+
+      <div className="profile-info">
+        <span>Account status</span>
+        <strong>Active</strong>
+      </div>
+
+      <button
+        onClick={() => {
+          setProfileOpen(false);
+          onNavigate("Settings");
+        }}
+      >
+        <Settings size={14} />
+        Account settings
+      </button>
+
+      <button
+        onClick={() =>
+          setProfileOpen(false)
+        }
+      >
+        Close
+      </button>
+    </div>
+  )}
+
+  <div className="theme-switch">
+    <button
+      className={
+        theme === "dark"
+          ? "theme-active"
+          : ""
+      }
+      onClick={() =>
+        onThemeChange("dark")
+      }
+    >
+      <Zap size={14} />
+      Dark
+    </button>
+
+    <button
+      className={
+        theme === "light"
+          ? "theme-active"
+          : ""
+      }
+      onClick={() =>
+        onThemeChange("light")
+      }
+    >
+      Light
+    </button>
+  </div>
+</div>
     </aside>
   );
 }
@@ -834,12 +890,16 @@ function Topbar({
   setSearch,
   onMenu,
   onQuickAction,
+  onNavigate,
 }: {
   search: string;
   setSearch: (value: string) => void;
   onMenu: () => void;
   onQuickAction: () => void;
+  onNavigate: (page: string) => void;
 }) {
+  const [profileOpen, setProfileOpen] =
+    useState(false);
   return (
     <header className="topbar">
       <button className="mobile-menu" onClick={onMenu}>
@@ -866,15 +926,71 @@ function Topbar({
           <Bell size={18} />
         </button>
 
-        <div className="top-user">
-          <div className="avatar avatar-photo">AU</div>
-          <div>
-            <strong>Admin User</strong>
-            <small>Administrator</small>
-          </div>
-          <ChevronDown size={15} />
+        <div className="top-user-wrapper">
+  <button
+    className="top-user"
+    onClick={() =>
+      setProfileOpen((open) => !open)
+    }
+  >
+    <div className="avatar avatar-photo">
+      AU
+    </div>
+
+    <div>
+      <strong>Admin User</strong>
+      <small>Administrator</small>
+    </div>
+
+    <ChevronDown
+      size={15}
+      style={{
+        transform: profileOpen
+          ? "rotate(180deg)"
+          : "rotate(0deg)",
+        transition: "transform 0.2s",
+      }}
+    />
+  </button>
+
+  {profileOpen && (
+    <div className="top-profile-popover">
+      <div className="profile-popover-header">
+        <div className="avatar avatar-photo">
+          AU
         </div>
 
+        <div>
+          <strong>Admin User</strong>
+          <span>Administrator</span>
+        </div>
+      </div>
+
+      <div className="profile-info">
+        <span>Account status</span>
+        <strong>Active</strong>
+      </div>
+
+      <button
+        onClick={() => {
+          setProfileOpen(false);
+          onNavigate("Settings");
+        }}
+      >
+        <Settings size={14} />
+        Account settings
+      </button>
+
+      <button
+        onClick={() =>
+          setProfileOpen(false)
+        }
+      >
+        Close
+      </button>
+    </div>
+  )}
+</div>
         <button
           className="quick-action-button"
           onClick={onQuickAction}
@@ -7051,6 +7167,12 @@ function App() {
 
   const [theme, setTheme] =
     useState<"dark" | "light">("dark");
+    useEffect(() => {
+  document.documentElement.setAttribute(
+    "data-theme",
+    theme,
+  );
+}, [theme]);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -7215,15 +7337,16 @@ const needsAttention = products.filter(
 
       <main className="main-content">
         <Topbar
-          search={search}
-          setSearch={setSearch}
-          onMenu={() => setSidebarOpen(true)}
-          onQuickAction={() =>
-            setQuickActionOpen(
-              (open) => !open,
-            )
-          }
-        />
+  search={search}
+  setSearch={setSearch}
+  onMenu={() => setSidebarOpen(true)}
+  onQuickAction={() =>
+    setQuickActionOpen((open) => !open)
+  }
+  onNavigate={(page) =>
+    setActivePage(page)
+  }
+/>
 
         <AnimatePresence mode="wait">
           <motion.div
