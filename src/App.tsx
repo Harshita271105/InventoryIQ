@@ -58,12 +58,43 @@ import {
 } from "recharts";
 import { apiGet, apiPost } from "./api";
 
-import {
-  navItems,
-  type InventoryStatus,
-  type Product,
-  type TransactionType,
-} from "@/data/mockData";
+type InventoryStatus =
+  | "Healthy"
+  | "Low Stock"
+  | "Critical"
+  | "Out of Stock";
+
+type TransactionType =
+  | "Purchase"
+  | "Sale"
+  | "Return"
+  | "Adjustment";
+
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  category: string;
+  stock: number;
+  reserved: number;
+  price: number;
+  status: InventoryStatus;
+  supplier: string;
+  reorderLevel: number;
+  updated: string;
+}
+
+const navItems = [
+  { label: "Overview", icon: "layout" },
+  { label: "Inventory", icon: "boxes" },
+  { label: "Products", icon: "package" },
+  { label: "Transactions", icon: "receipt" },
+  { label: "Analytics", icon: "chart" },
+  { label: "Forecasting", icon: "sparkles" },
+  { label: "Alerts", icon: "bell" },
+  { label: "Suppliers", icon: "truck" },
+  { label: "Reports", icon: "file" },
+];
 
 type IconName =
   | "layout"
