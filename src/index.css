@@ -352,7 +352,7 @@ nav { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
-}
+} 
 
 .status-legend small {
   color: var(--text-dim);
