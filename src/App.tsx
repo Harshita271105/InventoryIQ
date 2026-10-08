@@ -284,6 +284,8 @@ function HelpSupportPage({
 }: {
   showToast: (message: string) => void;
 }) {
+  const [contactOpen, setContactOpen] = useState(false);
+
   return (
     <div className="page">
       <PageHeader
@@ -309,9 +311,7 @@ function HelpSupportPage({
             }}
           >
             <div className="support-item">
-              <strong>
-                Manage products
-              </strong>
+              <strong>Manage products</strong>
               <span>
                 Add, search, filter and manage
                 inventory products.
@@ -319,9 +319,7 @@ function HelpSupportPage({
             </div>
 
             <div className="support-item">
-              <strong>
-                Monitor inventory
-              </strong>
+              <strong>Monitor inventory</strong>
               <span>
                 Use Inventory and Alerts to
                 identify low-stock and
@@ -330,9 +328,7 @@ function HelpSupportPage({
             </div>
 
             <div className="support-item">
-              <strong>
-                Analyze performance
-              </strong>
+              <strong>Analyze performance</strong>
               <span>
                 Use Analytics and Forecasting
                 to understand inventory trends.
@@ -350,9 +346,7 @@ function HelpSupportPage({
             }}
           >
             <div className="support-item">
-              <strong>
-                Products & Inventory
-              </strong>
+              <strong>Products & Inventory</strong>
               <span>
                 Product CRUD, stock levels and
                 inventory status.
@@ -360,9 +354,7 @@ function HelpSupportPage({
             </div>
 
             <div className="support-item">
-              <strong>
-                Transactions
-              </strong>
+              <strong>Transactions</strong>
               <span>
                 Search, filter and export
                 transaction records.
@@ -370,9 +362,7 @@ function HelpSupportPage({
             </div>
 
             <div className="support-item">
-              <strong>
-                Reports
-              </strong>
+              <strong>Reports</strong>
               <span>
                 Export CSV data and generate
                 available reports.
@@ -408,24 +398,287 @@ function HelpSupportPage({
               margin: "0 0 16px",
             }}
           >
-            For project support, check the
-            available application features
-            or review the project documentation.
+            For project support, choose a
+            support service below to get
+            assistance with InventoryIQ.
           </p>
 
           <button
             className="primary-button"
-            onClick={() =>
-              showToast(
-                "Support information is available in the project documentation.",
-              )
-            }
+            onClick={() => setContactOpen(true)}
           >
             <CircleHelp size={15} />
             Contact support
           </button>
         </Card>
       </div>
+
+      {contactOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.65)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "20px",
+          }}
+          onClick={() => setContactOpen(false)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "620px",
+              background: "var(--card)",
+              border: "1px solid var(--border-soft)",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow:
+                "0 24px 70px rgba(0, 0, 0, 0.45)",
+            }}
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: "22px",
+              }}
+            >
+              <div>
+                <div className="eyebrow">
+                  Support / Contact
+                </div>
+
+                <h2
+                  style={{
+                    margin: "5px 0 6px",
+                    fontSize: "22px",
+                  }}
+                >
+                  How can we help?
+                </h2>
+
+                <p
+                  style={{
+                    margin: 0,
+                    color: "var(--text-muted)",
+                    fontSize: "13px",
+                  }}
+                >
+                  Choose a support service for
+                  your InventoryIQ project.
+                </p>
+              </div>
+
+              <button
+                className="icon-button"
+                onClick={() =>
+                  setContactOpen(false)
+                }
+              >
+                <X size={17} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(2, minmax(0, 1fr))",
+                gap: "12px",
+              }}
+            >
+              <div
+                className="support-item"
+                style={{ padding: "16px" }}
+              >
+                <strong
+                  style={{
+                    fontSize: "14px",
+                    marginBottom: "7px",
+                  }}
+                >
+                  Email Support
+                </strong>
+
+                <span>
+                  Get assistance with account,
+                  inventory, reports and other
+                  application-related questions.
+                </span>
+
+                <button
+                  className="card-link"
+                  style={{
+                    marginTop: "12px",
+                  }}
+                  onClick={() =>
+                    showToast(
+                      "Email support is available through the project administrator.",
+                    )
+                  }
+                >
+                  Request assistance <ArrowRight size={14} />
+                </button>
+              </div>
+
+              <div
+                className="support-item"
+                style={{ padding: "16px" }}
+              >
+                <strong
+                  style={{
+                    fontSize: "14px",
+                    marginBottom: "7px",
+                  }}
+                >
+                  Technical Assistance
+                </strong>
+
+                <span>
+                  Get help with application
+                  functionality, backend services
+                  and inventory operations.
+                </span>
+
+                <button
+                  className="card-link"
+                  style={{
+                    marginTop: "12px",
+                  }}
+                  onClick={() =>
+                    showToast(
+                      "Technical assistance request selected.",
+                    )
+                  }
+                >
+                  Get technical help <ArrowRight size={14} />
+                </button>
+              </div>
+
+              <div
+                className="support-item"
+                style={{ padding: "16px" }}
+              >
+                <strong
+                  style={{
+                    fontSize: "14px",
+                    marginBottom: "7px",
+                  }}
+                >
+                  Project Documentation
+                </strong>
+
+                <span>
+                  Review the project documentation
+                  for setup, features and usage
+                  guidance.
+                </span>
+
+                <button
+                  className="card-link"
+                  style={{
+                    marginTop: "12px",
+                  }}
+                  onClick={() =>
+                    showToast(
+                      "Project documentation is available with the InventoryIQ project.",
+                    )
+                  }
+                >
+                  View guidance <ArrowRight size={14} />
+                </button>
+              </div>
+
+              <div
+                className="support-item"
+                style={{ padding: "16px" }}
+              >
+                <strong
+                  style={{
+                    fontSize: "14px",
+                    marginBottom: "7px",
+                  }}
+                >
+                  Report an Issue
+                </strong>
+
+                <span>
+                  Report problems related to
+                  products, transactions, reports
+                  or application functionality.
+                </span>
+
+                <button
+                  className="card-link"
+                  style={{
+                    marginTop: "12px",
+                  }}
+                  onClick={() =>
+                    showToast(
+                      "Issue reporting option selected.",
+                    )
+                  }
+                >
+                  Report issue <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: "18px",
+                padding: "13px 15px",
+                borderRadius: "10px",
+                background:
+                  "rgba(255, 255, 255, 0.03)",
+                border:
+                  "1px solid var(--border-soft)",
+                color: "var(--text-muted)",
+                fontSize: "12px",
+                lineHeight: 1.6,
+              }}
+            >
+              <strong
+                style={{
+                  color: "var(--text)",
+                  display: "block",
+                  marginBottom: "3px",
+                }}
+              >
+                Support availability
+              </strong>
+              Support requests can be directed
+              through the project administrator
+              or the available project
+              documentation.
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginTop: "20px",
+              }}
+            >
+              <button
+                className="secondary-button"
+                onClick={() =>
+                  setContactOpen(false)
+                }
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
