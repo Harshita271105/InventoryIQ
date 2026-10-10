@@ -1,5 +1,10 @@
-from flask import Flask
+
+import os
+from pathlib import Path
+
+from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
+
 from routes.product_routes import product_bp
 from routes.supplier_routes import supplier_bp
 from routes.inventory_routes import inventory_bp
@@ -23,8 +28,14 @@ from routes.auth_routes import auth_bp
 app = Flask(__name__)
 CORS(app)
 
-initialize_database()
+FRONTEND_DIST = Path(
+    os.environ.get(
+        "FRONTEND_DIST",
+        str(Path(__file__).resolve().parent.parent / "dist")
+    )
+).resolve()
 
+initialize_database()
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(export_bp)
@@ -47,14 +58,44 @@ app.register_blueprint(recommendation_bp)
 
 @app.route("/")
 def home():
-    return {"message": "InventoryIQ API is running"}
+    if (FRONTEND_DIST / "index.html").is_file():
+        return send_from_directory(str(FRONTEND_DIST), "index.html")
+
+    return jsonify({
+        "message": "InventoryIQ API is running",
+        "frontend": "Build not found"
+    })
+
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
-    return {
+    return jsonify({
         "status": "healthy",
         "service": "InventoryIQ API"
-    }
+    })
+
+
+@app.route("/<path:path>")
+def serve_frontend(path):
+    # Do not return the frontend for unknown API endpoints.
+    if path == "api" or path.startswith("api/"):
+        return jsonify({"error": "API endpoint not found"}), 404
+
+    requested_file = (FRONTEND_DIST / path).resolve()
+
+    # Prevent requests from accessing files outside the frontend build.
+    if (
+        requested_file.is_relative_to(FRONTEND_DIST)
+        and requested_file.is_file()
+    ):
+        return send_from_directory(str(FRONTEND_DIST), path)
+
+    # Support React client-side routes.
+    if (FRONTEND_DIST / "index.html").is_file():
+        return send_from_directory(str(FRONTEND_DIST), "index.html")
+
+    return jsonify({"error": "Frontend build not found"}), 404
+
 
 if __name__ == "__main__":
     app.run(debug=True)
