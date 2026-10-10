@@ -1352,6 +1352,7 @@ function HealthCard() {
     </Card>
   );
 }
+
 function TrendCard() {
   type DatasetTransaction = {
     id: number;
@@ -1365,6 +1366,9 @@ function TrendCard() {
     transaction_date: string;
   };
 
+  type Range = "7D" | "30D" | "90D" | "1Y";
+
+  const [range, setRange] = useState<Range>("30D");
   const [products, setProducts] = useState<BackendProduct[]>([]);
   const [transactions, setTransactions] = useState<DatasetTransaction[]>([]);
 
@@ -1391,22 +1395,16 @@ function TrendCard() {
   const salesByDate = new Map<string, number>();
 
   transactions.forEach((transaction) => {
-    const dateValue = transaction.transaction_date;
-
-    if (!dateValue) return;
-
-    const dateMatch = String(dateValue).match(/\d{4}-\d{2}-\d{2}/);
+    const dateMatch = String(transaction.transaction_date || "").match(
+      /\d{4}-\d{2}-\d{2}/,
+    );
 
     if (!dateMatch) return;
 
     const date = dateMatch[0];
-
     const transactionType = String(transaction.type || "").toLowerCase();
 
-    if (
-      transactionType !== "sale" &&
-      transactionType !== "sales"
-    ) {
+    if (transactionType !== "sale" && transactionType !== "sales") {
       return;
     }
 
@@ -1422,9 +1420,26 @@ function TrendCard() {
 
   const sortedDates = Array.from(salesByDate.keys()).sort();
 
-  const recentDates = sortedDates.slice(-30);
+  const rangeDays: Record<Range, number> = {
+    "7D": 7,
+    "30D": 30,
+    "90D": 90,
+    "1Y": 365,
+  };
 
-  const chartData = recentDates.map((date) => ({
+  const latestDate = sortedDates.length
+    ? new Date(`${sortedDates[sortedDates.length - 1]}T00:00:00`)
+    : new Date();
+
+  const startDate = new Date(latestDate);
+  startDate.setDate(startDate.getDate() - rangeDays[range] + 1);
+
+  const filteredDates = sortedDates.filter((date) => {
+    const currentDate = new Date(`${date}T00:00:00`);
+    return currentDate >= startDate && currentDate <= latestDate;
+  });
+
+  const chartData = filteredDates.map((date) => ({
     day: new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -1439,10 +1454,17 @@ function TrendCard() {
       className="trend-card"
       action={
         <div className="chart-tabs">
-          <button>7D</button>
-          <button className="selected">30D</button>
-          <button>90D</button>
-          <button>1Y</button>
+          {(["7D", "30D", "90D", "1Y"] as Range[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={range === option ? "selected" : ""}
+              onClick={() => setRange(option)}
+              aria-pressed={range === option}
+            >
+              {option}
+            </button>
+          ))}
         </div>
       }
     >
@@ -1488,17 +1510,14 @@ function TrendCard() {
                 </linearGradient>
               </defs>
 
-              <CartesianGrid
-                stroke="#263141"
-                vertical={false}
-              />
+              <CartesianGrid stroke="#263141" vertical={false} />
 
               <XAxis
                 dataKey="day"
                 tick={{ fill: "#8390a5", fontSize: 10 }}
                 tickLine={false}
                 axisLine={false}
-                interval={2}
+                interval="preserveStartEnd"
               />
 
               <YAxis
@@ -1516,19 +1535,10 @@ function TrendCard() {
                   borderRadius: 10,
                   color: "#fff",
                 }}
-                formatter={(value, name) => {
-                  if (name === "value") {
-                    return [
-                      `$${Number(value ?? 0)}K`,
-                      "Inventory Value",
-                    ];
-                  }
-
-                  return [
-                    `$${Number(value ?? 0)}K`,
-                    "Sales",
-                  ];
-                }}
+                formatter={(value, name) => [
+                  `$${Number(value ?? 0)}K`,
+                  name === "value" ? "Inventory Value" : "Sales",
+                ]}
               />
 
               <Area
@@ -1559,13 +1569,14 @@ function TrendCard() {
               fontSize: 13,
             }}
           >
-            Loading sales data...
+            No sales data available for this range.
           </div>
         )}
       </div>
     </Card>
   );
 }
+
 function ActivityCard({
   onNavigate,
 }: {
